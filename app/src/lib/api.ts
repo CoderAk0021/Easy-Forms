@@ -99,4 +99,22 @@ export const formsApi = {
   },
 };
 
+const handleResponse = async (response: Response) => {
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || 'Network response was not ok');
+  }
+  return response.json();
+};
+
+export const getFormResponses = async (formId: string) => {
+  const response = await fetch(`${API_BASE_URL}/forms/${formId}/responses`);
+  return handleResponse(response);
+};
+
+export const getFormById = async (formId: string) => {
+  const response = await fetch(`${API_BASE_URL}/forms/${formId}`);
+  return handleResponse(response);
+};
+
 export { ApiError };

@@ -7,10 +7,12 @@ import { FormEditor } from '@/components/form-builder/FormEditor';
 import { PublicForm } from '@/pages/PublicForm';
 import { Toaster } from '@/components/ui/sonner';
 import type { Form } from '@/types/form';
+import {FormResponses} from '@/pages/FormResponses';
 
 function App() {
   const [currentView, setCurrentView] = useState<'landing' | 'dashboard' | 'editor'>('landing');
   const [editingForm, setEditingForm] = useState<Form | null>(null);
+  
 
   const handleGetStarted = useCallback(() => {
     setCurrentView('dashboard');
@@ -82,6 +84,7 @@ function AppWithRouter() {
         <Route path="/" element={<App />} />
         <Route path="/form/:formId" element={<PublicForm />} />
         <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="/form/:id/responses" element={<FormResponses />} />
       </Routes>
       <Toaster position="top-right" richColors />
     </BrowserRouter>
