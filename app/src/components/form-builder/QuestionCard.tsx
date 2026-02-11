@@ -17,7 +17,6 @@ import {
   List,
   Plus,
   X,
-  Eye
 } from 'lucide-react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -236,13 +235,6 @@ export function QuestionCard({
                   >
                     <Copy className="w-4 h-4 mr-2 text-white/60" />
                     Duplicate
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    onClick={(e) => { e.stopPropagation(); }}
-                    className="hover:bg-white/5 focus:bg-white/5 cursor-pointer"
-                  >
-                    <Eye className="w-4 h-4 mr-2 text-white/60" />
-                    Preview
                   </DropdownMenuItem>
                   <DropdownMenuSeparator className="bg-white/10" />
                   <DropdownMenuItem

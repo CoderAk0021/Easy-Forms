@@ -1,7 +1,7 @@
 import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
 import { jwtDecode } from "jwt-decode";
 import { toast } from 'sonner';
-import { Fingerprint, LockKeyhole } from 'lucide-react';
+import { Fingerprint } from 'lucide-react';
 
 // Replace with your actual Client ID
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_CLIENT_ID;
@@ -10,13 +10,33 @@ interface Props {
   onVerified: (token: string, displayEmail: string) => void;
 }
 
+interface GoogleCredentialResponse {
+  credential?: string;
+}
+
+interface GoogleTokenPayload {
+  email?: string;
+}
+
 export function GoogleVerification({ onVerified }: Props) {
-  const handleSuccess = (credentialResponse: any) => {
+  const handleSuccess = (credentialResponse: GoogleCredentialResponse) => {
     if (credentialResponse.credential) {
-      const decoded: any = jwtDecode(credentialResponse.credential);
+      const decoded = jwtDecode<GoogleTokenPayload>(credentialResponse.credential);
+      if (!decoded.email) {
+        toast.error("Unable to verify Google email");
+        return;
+      }
       onVerified(credentialResponse.credential, decoded.email);
     }
   };
+
+  if (!GOOGLE_CLIENT_ID) {
+    return (
+      <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs text-amber-200">
+        Google sign-in is unavailable. Missing `VITE_CLIENT_ID`.
+      </div>
+    );
+  }
 
   return (
     <div className="relative overflow-hidden bg-slate-950/50 border border-slate-800 rounded-xl p-6 sm:p-8 text-center group">
@@ -32,11 +52,8 @@ export function GoogleVerification({ onVerified }: Props) {
         {/* Text */}
         <div className="space-y-1">
           <h3 className="text-slate-200 font-mono tracking-wider text-sm uppercase">
-            Identity Verification
+            SIGN IN TO CONTINUE
           </h3>
-          <p className="text-slate-500 text-xs">
-            Secure handshake required to proceed.
-          </p>
         </div>
 
         {/* Google Button Wrapper */}
@@ -45,18 +62,11 @@ export function GoogleVerification({ onVerified }: Props) {
             <GoogleLogin
               onSuccess={handleSuccess}
               onError={() => toast.error("Authentication Protocol Failed")}
-              useOneTap
               theme="filled_black" 
               shape="pill"
               text="continue_with"
             />
           </GoogleOAuthProvider>
-        </div>
-        
-        {/* Footer Security Note */}
-        <div className="flex items-center gap-1.5 opacity-40 mt-2">
-            <LockKeyhole className="w-3 h-3 text-slate-400" />
-            <span className="text-[10px] uppercase font-mono text-slate-400">End-to-End Encrypted</span>
         </div>
       </div>
     </div>

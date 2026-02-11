@@ -1,24 +1,43 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useParams } from 'react-router-dom';
 import { 
   AlertCircle, 
-  ShieldCheck, 
   Fingerprint,
-  Cpu,
   ArrowRight
 } from 'lucide-react';
 import { FormPreview } from '@/components/form-builder/FormPreview';
 import { useForms } from '@/hooks/useForms';
-import type { FormResponse } from '@/types/form';
+import type { Form, FormResponse } from '@/types/form';
 
 export function PublicForm() {
   const { formId } = useParams<{ formId: string }>();
-  const { getForm, submitResponse } = useForms();
-  const [form, setForm] = useState<any>(null);
+  const { getForm, submitResponse } = useForms({ autoFetch: false });
+  const [form, setForm] = useState<Form | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
+
+  const loadForm = useCallback(async () => {
+    if (!formId) return;
+    try {
+      const foundForm = await getForm(formId, { suppressToast: true });
+      if (foundForm) {
+        if (foundForm.isPublished) {
+          setForm(foundForm);
+        } else {
+          setError('This form is currently offline');
+        }
+      } else {
+        setError('Form not found');
+      }
+    } catch {
+      setError('Connection failed');
+    } finally {
+      setLoading(false);
+      setProgress(100);
+    }
+  }, [formId, getForm]);
 
   useEffect(() => {
     if (formId) {
@@ -29,35 +48,17 @@ export function PublicForm() {
       }, 200);
       return () => clearInterval(interval);
     }
-  }, [formId]);
+    setError('Form not found');
+    setLoading(false);
+    setProgress(100);
+  }, [formId, loadForm]);
 
-  const loadForm = async () => {
-    if (!formId) return;
-    try {
-      const foundForm = await getForm(formId);
-      if (foundForm) {
-        if (foundForm.isPublished) {
-          setForm(foundForm);
-        } else {
-          setError('This form is currently offline');
-        }
-      } else {
-        setError('Form not found');
-      }
-    } catch (err) {
-      setError('Connection failed');
-    } finally {
-      setLoading(false);
-      setProgress(100);
-    }
-  };
-
-  const handleSubmit = async (answers: Record<string, any>, googleToken: string) => {
+  const handleSubmit = async (answers: Record<string, unknown>, googleToken: string) => {
     if (!formId) return;
     const responseData: FormResponse['answers'] = Object.entries(answers).map(
       ([questionId, value]) => ({
         questionId,
-        value,
+        value: value as FormResponse['answers'][number]['value'],
       })
     );
     await submitResponse(formId, { 
@@ -256,33 +257,6 @@ export function PublicForm() {
 
               {/* Form Component */}
               <FormPreview form={form} onSubmit={handleSubmit} />
-            </div>
-          </motion.div>
-
-          {/* Footer */}
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.6 }}
-            className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-white/30 font-mono"
-          >
-            <div className="flex items-center gap-4">
-              <span className="flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5" />
-                Protected by reCAPTCHA
-              </span>
-              <span className="hidden sm:inline text-white/10">|</span>
-              <span className="flex items-center gap-1.5">
-                <Cpu className="w-3.5 h-3.5" />
-                ID: {formId?.substring(0, 8).toUpperCase()}
-              </span>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <span>Powered by</span>
-              <span className="text-white/50 hover:text-indigo-400 transition-colors cursor-default font-semibold">
-                FormCraft
-              </span>
             </div>
           </motion.div>
         </motion.div>

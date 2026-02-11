@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from 'mongoose';
 
 const QuestionOptionSchema = new mongoose.Schema({
   id: String,
@@ -74,4 +74,6 @@ FormSchema.pre("save", function () {
   this.updatedAt = Date.now();
 });
 
-module.exports = mongoose.model("Form", FormSchema);
+const Form = mongoose.model("Form", FormSchema);
+
+export default Form;

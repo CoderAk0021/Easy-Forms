@@ -1,9 +1,8 @@
-const { OAuth2Client } = require('google-auth-library');
+import { OAuth2Client } from "google-auth-library";
 
-// Use the SAME Client ID you created in Google Cloud Console
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-async function verifyGoogleToken(token) {
+export async function verifyGoogleToken(token) {
   try {
     const ticket = await client.verifyIdToken({
       idToken: token,
@@ -11,7 +10,6 @@ async function verifyGoogleToken(token) {
     });
     const payload = ticket.getPayload();
     
-    // Returns the verified email (e.g., "user@gmail.com")
     return payload.email; 
   } catch (error) {
     console.error("Token Verification Failed:", error.message);
@@ -19,4 +17,3 @@ async function verifyGoogleToken(token) {
   }
 }
 
-module.exports = { verifyGoogleToken };

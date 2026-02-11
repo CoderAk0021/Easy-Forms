@@ -12,19 +12,59 @@ class ApiError extends Error {
   }
 }
 
-// Transform MongoDB _id to id for frontend
-function transformForm(data: any): Form {
-  return {
-    ...data,
-    id: data._id || data.id,
-  };
+type ApiPayload = Record<string, unknown>;
+
+function getErrorMessage(payload: unknown, fallback: string): string {
+  if (
+    payload &&
+    typeof payload === "object" &&
+    "message" in payload &&
+    typeof payload.message === "string"
+  ) {
+    return payload.message;
+  }
+  return fallback;
 }
 
-function transformResponse(data: any): FormResponse {
+function hasSuccessFalse(payload: unknown): payload is { success: false; message?: string } {
+  return Boolean(
+    payload &&
+      typeof payload === "object" &&
+      "success" in payload &&
+      payload.success === false,
+  );
+}
+
+function transformForm(data: ApiPayload): Form {
   return {
     ...data,
-    id: data._id || data.id,
-  };
+    id: String(data._id || data.id || ""),
+  } as Form;
+}
+
+function transformResponse(data: ApiPayload): FormResponse {
+  return {
+    ...data,
+    id: String(data._id || data.id || ""),
+  } as FormResponse;
+}
+
+interface AuthLoginResponse {
+  success: boolean;
+  message?: string;
+}
+
+interface AuthUser {
+  sub: string;
+  role: string;
+  iat: number;
+  exp: number;
+}
+
+interface AuthVerifyResponse {
+  success: boolean;
+  user?: AuthUser;
+  message?: string;
 }
 
 async function fetchApi<T>(
@@ -41,52 +81,62 @@ async function fetchApi<T>(
       ...options.headers,
     },
   });
-  const data = await response.json();
-  if (data && data.success === false) {
+  let data: unknown = null;
+  try {
+    data = await response.json();
+  } catch {
+    data = null;
+  }
+
+  if (hasSuccessFalse(data)) {
     throw new ApiError(response.status, data.message || "Action failed");
   }
 
   if (!response.ok) {
-    throw new ApiError(response.status, data.message || "Something went wrong");
+    throw new ApiError(response.status, getErrorMessage(data, "Something went wrong"));
   }
 
-  return data;
+  return data as T;
 }
 
 export const authApi = {
   login: async (credentials: { username: string; password: string }) => {
-    // Assuming your auth routes are mounted at /auth or /admin
-    // Adjust '/auth/admin/login' based on your server.js routes
-    return fetchApi<any>('/auth/admin/login', {
+    return fetchApi<AuthLoginResponse>('/auth/admin/login', {
       method: 'POST',
       body: JSON.stringify(credentials),
     });
   },
 
   verify: async () => {
-    return fetchApi<any>('/auth/verify');
+    return fetchApi<AuthVerifyResponse>('/auth/verify');
   },
   
   logout: async () => {
-    // Ideally, call a backend logout endpoint to clear cookies. 
-    // For now, we can just reload or clear local state.
+    return fetchApi<AuthLoginResponse>('/auth/logout', {
+      method: 'POST',
+    });
   }
 };
 
 // Forms API
 export const formsApi = {
   getAll: async (): Promise<Form[]> => {
-    const data = await fetchApi<any[]>("/forms");
+    const data = await fetchApi<ApiPayload[]>("/forms");
     return data.map(transformForm);
   },
 
   getById: async (id: string): Promise<Form> => {
-    const data = await fetchApi<any>(`/forms/${id}`);
+    const data = await fetchApi<ApiPayload>(`/forms/public/${id}`);
+    return transformForm(data);
+  },
+
+  getByIdAdmin: async (id: string): Promise<Form> => {
+    const data = await fetchApi<ApiPayload>(`/forms/${id}`);
     return transformForm(data);
   },
 
   create: async (form: Omit<Form, "_id">): Promise<Form> => {
-    const data = await fetchApi<any>("/forms", {
+    const data = await fetchApi<ApiPayload>("/forms", {
       method: "POST",
       body: JSON.stringify(form),
     });
@@ -94,7 +144,7 @@ export const formsApi = {
   },
 
   update: async (id: string, form: Partial<Form>): Promise<Form> => {
-    const data = await fetchApi<any>(`/forms/${id}`, {
+    const data = await fetchApi<ApiPayload>(`/forms/${id}`, {
       method: "PUT",
       body: JSON.stringify(form),
     });
@@ -108,15 +158,15 @@ export const formsApi = {
   },
 
   getResponses: async (id: string): Promise<FormResponse[]> => {
-    const data = await fetchApi<any[]>(`/forms/${id}/responses`);
+    const data = await fetchApi<ApiPayload[]>(`/forms/${id}/responses`);
     return data.map(transformResponse);
   },
 
   submitResponse: async (
     id: string,
-    data: { answers: FormResponse["answers"]; respondent?: string },
+    data: { answers: FormResponse["answers"]; googleToken?: string },
   ): Promise<FormResponse> => {
-    const response = await fetchApi<any>(`/forms/${id}/responses`, {
+    const response = await fetchApi<ApiPayload>(`/forms/${id}/responses`, {
       method: "POST",
       body: JSON.stringify(data),
     });
@@ -124,22 +174,12 @@ export const formsApi = {
   },
 };
 
-const handleResponse = async (response: Response) => {
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || "Network response was not ok");
-  }
-  return response.json();
-};
-
 export const getFormResponses = async (formId: string) => {
-  const response = await fetch(`${API_BASE_URL}/forms/${formId}/responses`);
-  return handleResponse(response);
+  return fetchApi<FormResponse[]>(`/forms/${formId}/responses`);
 };
 
 export const getFormById = async (formId: string) => {
-  const response = await fetch(`${API_BASE_URL}/forms/${formId}`);
-  return handleResponse(response);
+  return formsApi.getById(formId);
 };
 
 // File Upload
@@ -151,6 +191,7 @@ export const uploadFile = async (file: File) => {
   const response = await fetch(`${API_BASE_URL}/upload`, {
     method: "POST",
     body: formData,
+    credentials: "include",
     // Note: Do NOT set Content-Type header here; fetch sets it automatically for FormData
   });
 
@@ -164,7 +205,11 @@ export const uploadFile = async (file: File) => {
 export async function checkSubmissionStatus(formId: string, email: string) {
   const response = await fetch(
     `${API_BASE_URL}/forms/${formId}/check-status?email=${encodeURIComponent(email)}`,
+    { credentials: "include" },
   );
+  if (!response.ok) {
+    throw new Error("Failed to check submission status");
+  }
   const data = await response.json();
   return data.submitted; // Expected boolean from backend
 }

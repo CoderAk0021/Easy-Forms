@@ -1,146 +1,52 @@
-const express = require("express");
+import express from "express";
+import { validate } from '../middlewares/validate.js';
+import { createFormSchema } from '../validators/form.validator.js';
+
+import { checkCookies } from "../middlewares/auth.middleware.js";
+import {
+  handleGetAllForms,
+  handleGetSingleForm,
+  handleCreateNewForm,
+  handleUpdateForm,
+  handleDeleteForm,
+  handleGetResponseForAForm,
+  handleSubmitAResponse,
+  handleCheckStatus,
+  handleGetPublicForm,
+} from "../controllers/form.controllers.js";
+
 const router = express.Router();
-const Form = require("../models/Form");
-const Response = require("../models/Response");
-const { verifyGoogleToken } = require("../utils/googleAuth.ts");
-const {checkCookies} = require("../middlewares/auth.middleware.js")
+
 
 // Get all forms
-router.get("/",checkCookies, async (req, res) => {
-  try {
-    const forms = await Form.find().sort({ createdAt: -1 });
-    res.json(forms);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
+router.get("/", checkCookies, handleGetAllForms);
 
-// Get a single form
-router.get("/:id",checkCookies, async (req, res) => {
-  try {
-    const form = await Form.findById(req.params.id);
-    if (!form) {
-      return res.status(404).json({ message: "Form not found" });
-    }
-    res.json(form);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
+// Get a public form published
+router.get("/public/:id", handleGetPublicForm);
+
+//Get a single form (protected)
+router.get('/:id', checkCookies, handleGetSingleForm);
 
 // Create a new form
-router.post("/",checkCookies, async (req, res) => {
-  try {
-    const form = new Form(req.body);
-    const savedForm = await form.save();
-    res.status(201).json(savedForm);
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-});
+
+router.post("/", checkCookies, validate(createFormSchema), handleCreateNewForm);
 
 // Update a form
-router.put("/:id",checkCookies, async (req, res) => {
-  try {
-    const form = await Form.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true,
-    });
-    if (!form) {
-      return res.status(404).json({ message: "Form not found" });
-    }
-    res.json(form);
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-});
+router.put("/:id", checkCookies, handleUpdateForm);
 
 // Delete a form
-router.delete("/:id",checkCookies, async (req, res) => {
-  try {
-    const form = await Form.findByIdAndDelete(req.params.id);
-    if (!form) {
-      return res.status(404).json({ message: "Form not found" });
-    }
-    // Also delete all responses for this form
-    await Response.deleteMany({ formId: req.params.id });
-    res.json({ message: "Form deleted successfully" });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
+router.delete("/:id", checkCookies, handleDeleteForm);
 
 // Get responses for a form
-router.get("/:id/responses",checkCookies, async (req, res) => {
-  try {
-    const responses = await Response.find({ formId: req.params.id }).sort({
-      submittedAt: -1,
-    });
-    res.json(responses);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
+router.get("/:id/responses", checkCookies, handleGetResponseForAForm);
 
 //Submit a response
-router.post("/:id/responses", async (req, res) => {
-  try {
-    const form = await Form.findById(req.params.id);
-    let verifiedEmail = null;
-    if (!form) {
-      return res.status(404).json({ message: "Form not found" });
-    }
-    if (!form.isPublished) {
-      return res.status(403).json({ message: "Form is not published" });
-    }
-    if (!req.body.googleToken)
-      return res.status(200).json({ message: "Google Sign In Required" });
-    
-    verifiedEmail = await verifyGoogleToken(req.body.googleToken);
+router.post("/:id/responses", handleSubmitAResponse);
 
-    const exists = await Response.findOne({
-      formId: req.params.id,
-      respondentEmail: verifiedEmail,
-    });
+//Check Status of a form submit
+router.get("/:id/check-status", handleCheckStatus);
 
-    if (exists && !form.settings.allowMultipleResponses) {
-      return res
-        .status(409)
-        .json({ message: "You have already submitted this form." });
-    }
+export default router;
 
-    const response = new Response({
-      formId: req.params.id,
-      answers: req.body.answers,
-      respondentEmail: verifiedEmail,
-    });
 
-    await response.save();
 
-    // Increment response count
-    form.responseCount += 1;
-    await form.save();
-
-    res.status(201).json(response);
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-});
-
-router.get("/:id/check-status", async (req, res) => {
-  try {
-    const email = req.query.email;
-    const formID = req.params.id;
-
-    const response = await Response.find({
-      formId: formID,
-      respondentEmail: email,
-    });
-    if (!response.length) {
-      return res.json({ submitted: false });
-    }
-    return res.json({ submitted: true });
-  } catch (error) {}
-});
-
-module.exports = router;

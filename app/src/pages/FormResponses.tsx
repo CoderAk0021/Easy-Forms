@@ -5,8 +5,35 @@ import {
   ArrowLeft, Download, FileText, BarChart3, Users, 
   Calendar, ChevronLeft, ChevronRight, Search, Clock, 
 } from 'lucide-react';
-// 1. CHANGE: Import the secure formsApi instead of the raw functions
-import { formsApi } from '../lib/api'; 
+import { ApiError, formsApi } from '../lib/api';
+import type { Form, FormResponse, Question, Answer } from '@/types/form';
+
+type FormResponseRow = FormResponse & { respondentEmail?: string };
+
+type StatColor = 'indigo' | 'cyan' | 'purple' | 'emerald';
+
+const statStyles: Record<StatColor, { gradient: string; badge: string; icon: string }> = {
+  indigo: {
+    gradient: 'from-indigo-500/10 to-transparent',
+    badge: 'bg-indigo-500/10 border-indigo-500/20',
+    icon: 'text-indigo-400',
+  },
+  cyan: {
+    gradient: 'from-cyan-500/10 to-transparent',
+    badge: 'bg-cyan-500/10 border-cyan-500/20',
+    icon: 'text-cyan-400',
+  },
+  purple: {
+    gradient: 'from-purple-500/10 to-transparent',
+    badge: 'bg-purple-500/10 border-purple-500/20',
+    icon: 'text-purple-400',
+  },
+  emerald: {
+    gradient: 'from-emerald-500/10 to-transparent',
+    badge: 'bg-emerald-500/10 border-emerald-500/20',
+    icon: 'text-emerald-400',
+  },
+};
 
 const formatDate = (dateString: string) => {
   const date = new Date(dateString);
@@ -26,8 +53,8 @@ export const FormResponses = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   
-  const [form, setForm] = useState<any>(null);
-  const [responses, setResponses] = useState<any[]>([]);
+  const [form, setForm] = useState<Form | null>(null);
+  const [responses, setResponses] = useState<FormResponseRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -36,25 +63,28 @@ export const FormResponses = () => {
 
   useEffect(() => {
     const fetchData = async () => {
+      if (!id) {
+        setError('Invalid form URL');
+        setLoading(false);
+        return;
+      }
+
       try {
-        if (!id) return;
         setLoading(true);
         
-        // 2. CHANGE: Use formsApi. This ensures cookies are sent.
         const [formData, responsesData] = await Promise.all([
-          formsApi.getById(id),
+          formsApi.getByIdAdmin(id),
           formsApi.getResponses(id)
         ]);
         
         setForm(formData);
         setResponses(responsesData);
-      } catch (err: any) {
-        console.error("Fetch error:", err);
-        setError(err.message || "Failed to load responses");
+      } catch (err: unknown) {
+        const message = err instanceof ApiError ? err.message : "Failed to load responses";
+        setError(message);
         
-        // Optional: If error is auth related, redirect to login
-        if (err.message === "User Need to Login" || err.status === 401) {
-             navigate('/login');
+        if (err instanceof ApiError && err.status === 401) {
+          navigate('/login');
         }
       } finally {
         setLoading(false);
@@ -67,10 +97,10 @@ export const FormResponses = () => {
   // This prevents crashes if the API returns an error object unexpectedly
   const safeResponses = Array.isArray(responses) ? responses : [];
 
-  const filteredResponses = safeResponses.filter(response => {
+  const filteredResponses = safeResponses.filter((response) => {
     const searchLower = searchQuery.toLowerCase();
     const matchesEmail = response.respondentEmail?.toLowerCase().includes(searchLower);
-    const matchesContent = response.answers?.some((a: any) => 
+    const matchesContent = response.answers?.some((a: Answer) => 
       String(a.value).toLowerCase().includes(searchLower)
     );
     return matchesEmail || matchesContent;
@@ -85,12 +115,12 @@ export const FormResponses = () => {
   const handleExportCSV = () => {
     if (!form || !responses.length) return;
 
-    const headers = ['Submission Date','Email',...form.questions.map((q: any) => `"${q.title}"`)];
-    const rows = responses.map((response) => {
+    const headers = ['Submission Date','Email',...form.questions.map((q: Question) => `"${q.title}"`)];
+    const rows = responses.map((response: FormResponseRow) => {
       const date = `"${new Date(response.submittedAt).toLocaleString()}"`;
       const respondentEmail = response.respondentEmail || 'Anonymous';
-      const answers = form.questions.map((q: any) => {
-        const answerObj = response.answers.find((a: any) => a.questionId === q.id);
+      const answers = form.questions.map((q: Question) => {
+        const answerObj = response.answers.find((a: Answer) => a.questionId === q.id);
         let val = answerObj ? answerObj.value : '';
         if (Array.isArray(val)) val = val.join(', ');
         val = String(val || '').replace(/"/g, '""');
@@ -125,6 +155,8 @@ export const FormResponses = () => {
     }).length,
     uniqueEmails: new Set(safeResponses.map(r => r.respondentEmail)).size
   };
+
+  const questions = form?.questions ?? [];
 
   if (loading) {
     return (
@@ -203,10 +235,10 @@ export const FormResponses = () => {
           {/* Stats Grid */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             {[
-              { label: 'Total Responses', value: stats.total, icon: FileText, trend: '+12%', color: 'indigo' },
-              { label: 'Today', value: stats.today, icon: Clock, trend: 'Live', color: 'cyan' },
-              { label: 'This Week', value: stats.thisWeek, icon: Calendar, trend: '+5', color: 'purple' },
-              { label: 'Unique Users', value: stats.uniqueEmails, icon: Users, trend: '100%', color: 'emerald' },
+              { label: 'Total Responses', value: stats.total, icon: FileText, trend: '+12%', color: 'indigo' as const },
+              { label: 'Today', value: stats.today, icon: Clock, trend: 'Live', color: 'cyan' as const },
+              { label: 'This Week', value: stats.thisWeek, icon: Calendar, trend: '+5', color: 'purple' as const },
+              { label: 'Unique Users', value: stats.uniqueEmails, icon: Users, trend: '100%', color: 'emerald' as const },
             ].map((stat, index) => (
               <motion.div
                 key={stat.label}
@@ -215,14 +247,14 @@ export const FormResponses = () => {
                 transition={{ delay: index * 0.1 }}
                 className="relative overflow-hidden rounded-2xl border border-white/5 bg-white/[0.02] p-5 hover:border-white/10 transition-all group"
               >
-                <div className={`absolute inset-0 bg-gradient-to-br from-${stat.color}-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity`} />
+                <div className={`absolute inset-0 bg-gradient-to-br ${statStyles[stat.color].gradient} opacity-0 group-hover:opacity-100 transition-opacity`} />
                 <div className="relative flex items-start justify-between">
                   <div>
                     <p className="text-sm text-white/40 mb-1">{stat.label}</p>
                     <p className="text-2xl font-bold text-white">{stat.value}</p>
                   </div>
-                  <div className={`w-10 h-10 rounded-xl bg-${stat.color}-500/10 border border-${stat.color}-500/20 flex items-center justify-center`}>
-                    <stat.icon className={`w-5 h-5 text-${stat.color}-400`} />
+                  <div className={`w-10 h-10 rounded-xl border flex items-center justify-center ${statStyles[stat.color].badge}`}>
+                    <stat.icon className={`w-5 h-5 ${statStyles[stat.color].icon}`} />
                   </div>
                 </div>
               </motion.div>
@@ -258,7 +290,7 @@ export const FormResponses = () => {
                   <tr className="border-b border-white/5 bg-white/[0.02]">
                     <th className="px-6 py-4 text-xs font-medium text-white/40 uppercase tracking-wider whitespace-nowrap">Date</th>
                     <th className="px-6 py-4 text-xs font-medium text-white/40 uppercase tracking-wider whitespace-nowrap">Respondent</th>
-                    {form?.questions.map((q: any) => (
+                    {questions.map((q: Question) => (
                       <th key={q.id} className="px-6 py-4 text-xs font-medium text-white/40 uppercase tracking-wider min-w-[200px]">
                         <span className="truncate block max-w-[150px]">{q.title}</span>
                       </th>
@@ -269,14 +301,13 @@ export const FormResponses = () => {
                   <AnimatePresence>
                     {paginatedResponses.length === 0 ? (
                       <tr>
-                        <td colSpan={form.questions.length + 2} className="px-6 py-16 text-center">
+                        <td colSpan={questions.length + 2} className="px-6 py-16 text-center">
                           <p className="text-white/40">No responses found</p>
                         </td>
                       </tr>
                     ) : (
                       paginatedResponses.map((response, idx) => (
                         <motion.tr 
-                          // 3. CHANGE: Use response.id if available, fallback to _id
                           key={response.id || response._id}
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
@@ -289,10 +320,14 @@ export const FormResponses = () => {
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-white/80">
                              {response.respondentEmail || 'Anonymous'}
                           </td>
-                          {form.questions.map((q: any) => {
-                            const answerObj = response.answers?.find((a: any) => a.questionId === q.id);
+                          {questions.map((q: Question) => {
+                            const answerObj = response.answers?.find((a: Answer) => a.questionId === q.id);
                             const val = answerObj ? answerObj.value : '-';
-                            const display = Array.isArray(val) ? val.join(', ') : val;
+                            const display = Array.isArray(val)
+                              ? val.join(', ')
+                              : val instanceof File
+                                ? val.name
+                                : String(val ?? '-');
                             return (
                               <td key={q.id} className="px-6 py-4 text-sm text-white/70">
                                 <span className="line-clamp-2">{display}</span>

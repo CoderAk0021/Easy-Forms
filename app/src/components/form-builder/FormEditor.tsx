@@ -259,6 +259,35 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
 
   const shareUrl = `${window.location.origin}/form/${form._id || form.id}`;
 
+  const handleDownloadQrCode = useCallback(async () => {
+    try {
+      const qrImageUrl = `https://quickchart.io/qr?text=${encodeURIComponent(shareUrl)}&size=1024&margin=2&format=png`;
+      const response = await fetch(qrImageUrl);
+      if (!response.ok) throw new Error("Failed to generate QR code");
+
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const safeTitle = form.title
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+      const filename = `${safeTitle || "form"}-qr-code.png`;
+
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+
+      toast.success("QR code downloaded");
+    } catch {
+      toast.error("Failed to download QR code");
+    }
+  }, [shareUrl, form.title]);
+
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-white relative overflow-hidden flex flex-col">
       {/* Background Effects */}
@@ -286,7 +315,7 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
               <div className="h-6 w-px bg-white/10 hidden sm:block flex-shrink-0" />
 
               <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500/20 to-cyan-500/20 border border-indigo-500/30 flex items-center justify-center flex-shrink-0 hidden sm:flex">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500/20 to-cyan-500/20 border border-indigo-500/30 flex items-center justify-center flex-shrink-0  sm:flex">
                   <Command className="w-4 h-4 text-indigo-400" />
                 </div>
                 <Input
@@ -460,6 +489,7 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
               <Button
                 variant="outline"
                 className="flex-1 bg-white/5 border-white/10 text-white hover:bg-white/10"
+                onClick={handleDownloadQrCode}
               >
                 <Download className="w-4 h-4 mr-2" />
                 QR Code

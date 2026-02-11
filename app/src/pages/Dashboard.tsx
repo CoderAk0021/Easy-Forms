@@ -15,7 +15,6 @@ import {
   Clock,
   Users,
   Globe,
-  TrendingUp,
   Command,
   ChevronRight,
   FolderOpen,
@@ -63,7 +62,6 @@ export function Dashboard({ onEditForm }: DashboardProps) {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [formToDelete, setFormToDelete] = useState<string | null>(null);
   const [showTemplates, setShowTemplates] = useState(false);
-  const [hoveredCard, setHoveredCard] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const filteredForms = forms.filter((form) =>
@@ -457,7 +455,7 @@ export function Dashboard({ onEditForm }: DashboardProps) {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              className={`group relative overflow-hidden rounded-2xl border border-white/5 bg-gray-950 p-6 hover:border-white/10 transition-all duration-300 ${stat.glow} hover:shadow-lg`}
+              className={`group relative overflow-hidden rounded-2xl border border-white/5 bg-gray-950/40 p-6 hover:border-white/10 transition-all duration-300 ${stat.glow} hover:shadow-lg`}
             >
               <div
                 className={`absolute inset-0 bg-gray-900 opacity-0 group-hover:opacity-100 transition-opacity duration-500`}
@@ -470,13 +468,6 @@ export function Dashboard({ onEditForm }: DashboardProps) {
                   <p className="text-3xl font-bold text-white mb-2">
                     {stat.value}
                   </p>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium text-emerald-400 flex items-center gap-1">
-                      <TrendingUp className="w-3 h-3" />
-                      {stat.trend}
-                    </span>
-                    <span className="text-xs text-white/30">vs last month</span>
-                  </div>
                 </div>
                 <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                   <stat.icon className="w-6 h-6 text-white/60" />
@@ -537,7 +528,7 @@ export function Dashboard({ onEditForm }: DashboardProps) {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="relative overflow-hidden rounded-3xl border border-white/5 bg-gray-950 p-16 text-center"
+            className="relative overflow-hidden rounded-3xl border border-white/5 bg-gray-950/40 p-16 text-center"
           >
             <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-cyan-500/5" />
             <div className="relative">
@@ -571,8 +562,6 @@ export function Dashboard({ onEditForm }: DashboardProps) {
             {filteredForms.map((form) => (
               <div
                 key={form.id}
-                onMouseEnter={() => setHoveredCard(form.id)}
-                onMouseLeave={() => setHoveredCard(null)}
                 className={
                   viewMode === "grid"
                     ? "group relative rounded-2xl border border-gray-800 bg-gray-950/90 hover:border-white/10 hover:bg-white/[0.04] transition-all duration-300 cursor-pointer overflow-hidden"

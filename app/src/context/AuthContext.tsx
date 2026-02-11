@@ -1,18 +1,31 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authApi } from '../lib/api'; // Adjust path
 
+interface AuthUser {
+  sub: string;
+  role: string;
+  iat: number;
+  exp: number;
+}
+
+interface LoginCredentials {
+  username: string;
+  password: string;
+}
+
 interface AuthContextType {
-  user: any | null;
+  user: AuthUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (credentials: any) => Promise<void>;
-  logout: () => void;
+  login: (credentials: LoginCredentials) => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<any | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Check auth status on mount
@@ -24,18 +37,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const data = await authApi.verify();
       if (data.success) {
-        setUser(data.user);
+        setUser(data.user ?? null);
       } else {
         setUser(null);
       }
-    } catch (error) {
+    } catch {
       setUser(null);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const login = async (credentials: any) => {
+  const login = async (credentials: LoginCredentials) => {
     const data = await authApi.login(credentials);
     if (data.success) {
       // After successful login, verify to get user details/ensure cookie is set
@@ -45,10 +58,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    // Optional: Call backend logout API here to clear cookie
-    window.location.href = '/login'; // Hard redirect to clear any app state
+  const logout = async () => {
+    try {
+      await authApi.logout();
+    } catch {
+      // Continue logout flow even if server-side logout request fails.
+    } finally {
+      setUser(null);
+      window.location.href = '/login';
+    }
   };
 
   return (

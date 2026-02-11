@@ -11,7 +11,7 @@ interface UseFormsReturn {
   createForm: (form: Omit<Form, '_id'>) => Promise<Form | null>;
   updateForm: (id: string, form: Partial<Form>) => Promise<Form | null>;
   deleteForm: (id: string) => Promise<boolean>;
-  getForm: (id: string) => Promise<Form | null>;
+  getForm: (id: string, options?: { suppressToast?: boolean }) => Promise<Form | null>;
   submitResponse: (
     id: string,
     data: { answers: FormResponse['answers']; googleToken?: string }
@@ -19,9 +19,13 @@ interface UseFormsReturn {
   getResponses: (id: string) => Promise<FormResponse[]>;
 }
 
-export function useForms(): UseFormsReturn {
+interface UseFormsOptions {
+  autoFetch?: boolean;
+}
+
+export function useForms({ autoFetch = true }: UseFormsOptions = {}): UseFormsReturn {
   const [forms, setForms] = useState<Form[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(autoFetch);
   const [error, setError] = useState<string | null>(null);
 
   const fetchForms = useCallback(async () => {
@@ -40,8 +44,12 @@ export function useForms(): UseFormsReturn {
   }, []);
 
   useEffect(() => {
+    if (!autoFetch) {
+      setLoading(false);
+      return;
+    }
     fetchForms();
-  }, [fetchForms]);
+  }, [autoFetch, fetchForms]);
 
   const createForm = useCallback(async (form: Omit<Form, '_id'>) => {
     try {
@@ -84,13 +92,15 @@ export function useForms(): UseFormsReturn {
     }
   }, []);
 
-  const getForm = useCallback(async (id: string) => {
+  const getForm = useCallback(async (id: string, options?: { suppressToast?: boolean }) => {
     try {
       const form = await formsApi.getById(id);
       return form;
     } catch (err) {
       const message = err instanceof ApiError ? err.message : 'Failed to fetch form';
-      toast.error(message);
+      if (!options?.suppressToast) {
+        toast.error(message);
+      }
       return null;
     }
   }, []);

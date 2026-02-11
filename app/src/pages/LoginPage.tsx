@@ -38,8 +38,9 @@ export function LoginPage() {
       // Small delay to let the success animation play if you had one, 
       // otherwise instant redirect feels snappy
       navigate(from, { replace: true });
-    } catch (error: any) {
-      toast.error(error.message || "Invalid credentials");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Invalid credentials";
+      toast.error(message);
       setIsLoading(false);
     }
   };
@@ -110,7 +111,7 @@ export function LoginPage() {
                            text-sm text-white placeholder:text-white/20
                            focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50
                            transition-all duration-200"
-                  placeholder="••••••••"
+                  placeholder="********"
                 />
               </div>
             </div>
@@ -150,3 +151,4 @@ export function LoginPage() {
     </div>
   );
 }
+

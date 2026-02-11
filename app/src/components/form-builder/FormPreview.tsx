@@ -25,15 +25,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Form, Question } from "@/types/form";
+import type { Answer, Form, Question } from "@/types/form";
 import { checkSubmissionStatus, uploadFile } from "../../lib/api";
 import { GoogleVerification } from "./GoogleVerification";
 
 interface FormPreviewProps {
   form: Form;
   onSubmit?: (
-    answers: Record<string, any>,
-    googleToken: Record<string, any>,
+    answers: Record<string, unknown>,
+    googleToken: string,
   ) => void;
 }
 
@@ -63,16 +63,14 @@ const itemVariants: Variants = {
 };
 
 export function FormPreview({ form, onSubmit }: FormPreviewProps) {
-  const [answers, setAnswers] = useState<Record<string, any>>({});
+  const [answers, setAnswers] = useState<Record<string, Answer["value"]>>({});
   const [submitted, setSubmitted] = useState(false);
   const [googleToken, setGoogleToken] = useState<string | null>(null);
   const [displayEmail, setDisplayEmail] = useState<string | null>(null);
-  const [isChecking, setIsChecking] = useState(false);
   const [alreadyResponded, setAlreadyResponded] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
   const handleVerification = async (token: string, email: string) => {
-    setIsChecking(true);
     try {
       const hasSubmitted = await checkSubmissionStatus(form.id, email);
       if (hasSubmitted && !form.settings.allowMultipleResponses) {
@@ -87,12 +85,10 @@ export function FormPreview({ form, onSubmit }: FormPreviewProps) {
     } catch (error) {
       console.error(error);
       toast.error("Failed to verify submission status");
-    } finally {
-      setIsChecking(false);
     }
   };
 
-  const handleAnswerChange = (questionId: string, value: any) => {
+  const handleAnswerChange = (questionId: string, value: Answer["value"]) => {
     setAnswers((prev) => ({ ...prev, [questionId]: value }));
   };
 
@@ -115,14 +111,14 @@ export function FormPreview({ form, onSubmit }: FormPreviewProps) {
     return true;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SubmitEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
-    if (!googleToken && !form.settings.allowMultipleResponses) {
+    if (!googleToken && form.settings.limitOneResponse) {
       toast.error("Please sign in first");
       return;
     }
-    if (onSubmit) {
+    if (onSubmit && googleToken) {
       onSubmit(answers, googleToken);
     }
     setSubmitted(true);
@@ -369,20 +365,14 @@ export function FormPreview({ form, onSubmit }: FormPreviewProps) {
                 ) : (
                   <>
                     Submit Response
-                    <motion.span
-                      initial={{ x: 0 }}
-                      whileHover={{ x: 4 }}
-                      className="inline-block"
-                    >
-                      →
-                    </motion.span>
+
                   </>
                 )}
               </span>
             </Button>
 
             <p className="text-center text-xs text-gray-500 mt-4 hidden md:block">
-              Press Enter ↵ to submit
+              Press Enter to submit
             </p>
           </motion.div>
         )}
@@ -397,12 +387,12 @@ export function FormPreview({ form, onSubmit }: FormPreviewProps) {
 
 interface QuestionPreviewProps {
   question: Question;
-  value: any;
-  onChange: (value: any) => void;
+  value: Answer["value"];
+  onChange: (value: Answer["value"]) => void;
   index: number;
-  setUploading: any;
+  setUploading: React.Dispatch<React.SetStateAction<boolean>>;
   uploading: boolean;
-  googleToken: string;
+  googleToken: string | null;
 }
 
 function QuestionPreview({
@@ -425,9 +415,9 @@ function QuestionPreview({
       onChange(response.url);
       setLocalFileName(file.name);
       toast.success("File uploaded successfully");
-    } catch (error: any) {
-      console.error("Upload failed", error);
-      toast.error(error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Upload failed";
+      toast.error(message);
     } finally {
       setUploading(false);
     }
@@ -446,6 +436,10 @@ function QuestionPreview({
     localFileName ||
     (typeof value === "string" ? value.split("/").pop() : null);
   const isDisabled = uploading || !googleToken;
+  const textValue = typeof value === "string" || typeof value === "number" ? String(value) : "";
+  const selectValue = typeof value === "string" ? value : "";
+  const checkboxValues = Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
+  const ratingValue = typeof value === "number" ? value : Number(value) || 0;
 
   return (
     <motion.div
@@ -483,7 +477,7 @@ function QuestionPreview({
         <div className="ml-0 md:ml-12 mt-3 md:mt-0 space-y-3">
           {question.type === "short_text" && (
             <Input
-              value={value || ""}
+              value={textValue}
               onChange={(e) => onChange(e.target.value)}
               placeholder={question.placeholder || "Type your answer..."}
               required={question.required}
@@ -493,7 +487,7 @@ function QuestionPreview({
 
           {question.type === "long_text" && (
             <Textarea
-              value={value || ""}
+              value={textValue}
               onChange={(e) => onChange(e.target.value)}
               placeholder={question.placeholder || "Type your answer..."}
               required={question.required}
@@ -505,7 +499,7 @@ function QuestionPreview({
           {question.type === "email" && (
             <Input
               type="email"
-              value={value || ""}
+              value={textValue}
               onChange={(e) => onChange(e.target.value)}
               placeholder={question.placeholder || "name@example.com"}
               required={question.required}
@@ -516,7 +510,7 @@ function QuestionPreview({
           {question.type === "number" && (
             <Input
               type="number"
-              value={value || ""}
+              value={textValue}
               onChange={(e) => onChange(e.target.value)}
               placeholder={question.placeholder || "0"}
               required={question.required}
@@ -527,7 +521,7 @@ function QuestionPreview({
           {question.type === "date" && (
             <Input
               type="date"
-              value={value || ""}
+              value={selectValue}
               onChange={(e) => onChange(e.target.value)}
               required={question.required}
               className="h-11 md:h-12 bg-white/5 border-white/10 text-white placeholder:text-gray-600 focus:border-indigo-500/50 focus:ring-indigo-500/20 rounded-xl transition-all [color-scheme:dark]"
@@ -536,7 +530,7 @@ function QuestionPreview({
 
           {question.type === "multiple_choice" && (
             <RadioGroup
-              value={value || ""}
+              value={selectValue}
               onValueChange={onChange}
               required={question.required}
               className="space-y-2 md:space-y-3"
@@ -568,9 +562,9 @@ function QuestionPreview({
                 >
                   <Checkbox
                     id={option.id}
-                    checked={(value || []).includes(option.value)}
+                    checked={checkboxValues.includes(option.value)}
                     onCheckedChange={(checked) => {
-                      const currentValues = value || [];
+                      const currentValues = checkboxValues;
                       if (checked) {
                         onChange([...currentValues, option.value]);
                       } else {
@@ -593,7 +587,7 @@ function QuestionPreview({
 
           {question.type === "dropdown" && (
             <Select
-              value={value || ""}
+              value={selectValue}
               onValueChange={onChange}
               required={question.required}
             >
@@ -627,7 +621,7 @@ function QuestionPreview({
                 >
                   <Star
                     className={`w-7 h-7 md:w-8 md:h-8 transition-all duration-200 ${
-                      (value || 0) > i
+                      ratingValue > i
                         ? "fill-amber-400 text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]"
                         : "text-gray-700 hover:text-gray-600"
                     }`}
@@ -734,3 +728,4 @@ function QuestionPreview({
     </motion.div>
   );
 }
+

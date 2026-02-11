@@ -1,25 +1,26 @@
-const jwt = require('jsonwebtoken');
+import jwt from 'jsonwebtoken';
 
-function checkCookies(req, res, next) {
+export function checkCookies(req, res, next) {
   try {
     const { token } = req.cookies;
-    if (token) {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
-      if (decoded) {
-        req.user = decoded;
-        return next();
-      }
-      return res.status(200).json({ success: false, message: "Invalid Token" });
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: "Not authenticated"
+      });
     }
-    return res.status(200).json({ success: false, message: "User Need to Login" });
-  } catch (error) {
-    console.log("Error at checkCookies : ", error.message);
-    return res
-      .status(500)
-      .json({ success: false, message: "Internal Server Error" });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
+    req.user = decoded;
+    next();
+
+  } catch (err) {
+    return res.status(401).json({
+      success: false,
+      message: "Invalid token"
+    });
   }
 }
-
-module.exports = {checkCookies}
 
 

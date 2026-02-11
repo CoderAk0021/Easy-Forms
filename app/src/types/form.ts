@@ -67,7 +67,8 @@ export interface FormResponse {
   formId: string;
   submittedAt: string;
   answers: Answer[];
-  googleToken: string;
+  googleToken?: string;
+  respondentEmail?: string;
   respondent?: {
     name?: string;
     email?: string;
