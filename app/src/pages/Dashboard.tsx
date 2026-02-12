@@ -51,7 +51,7 @@ import type { Form } from "@/types/form";
 import { DEFAULT_FORM } from "@/types/form";
 import { generateId } from "@/utils/id";
 import { useNavigate } from "react-router-dom";
-
+import Logo from "@/components/ui/Logo";
 interface DashboardProps {
   onEditForm: (form: Form) => void;
 }
@@ -258,18 +258,14 @@ export function Dashboard({ onEditForm }: DashboardProps) {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
               <div className="relative group">
-                <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-cyan-500 rounded-xl blur opacity-40 group-hover:opacity-60 transition-opacity" />
-                <div className="relative w-9 h-9 bg-gradient-to-br from-indigo-500 to-cyan-500 rounded-xl flex items-center justify-center">
-                  <FileText className="w-5 h-5 text-white" />
+                <div className="relative w-9 h-9 flex items-center justify-center">
+                  <Logo/>
                 </div>
               </div>
               <div>
                 <h1 className="text-lg font-bold bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
-                  FormCraft
+                  EasyForms
                 </h1>
-                <p className="text-[10px] text-white/40 uppercase tracking-widest font-medium hidden sm:block">
-                  Pro
-                </p>
               </div>
             </div>
 
