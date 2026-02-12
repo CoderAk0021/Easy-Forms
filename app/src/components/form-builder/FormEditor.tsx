@@ -30,6 +30,7 @@ import {
   Undo2,
   Redo2,
   Download,
+  Loader,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -153,6 +154,8 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
 
   const [previewMode, setPreviewMode] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isQrGenerating, setIsQrGenerating] = useState(false);
   const [devicePreview, setDevicePreview] = useState<"desktop" | "mobile">(
     "desktop",
   );
@@ -251,15 +254,25 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
   );
 
   const handleSave = useCallback(async () => {
-    const formId = form._id || form.id;
-    await updateForm(formId, form);
-    toast.success("Form saved successfully");
-    onBack();
-  }, [form, updateForm, onBack]);
+    if (isSaving) return;
+    setIsSaving(true);
+    try {
+      const formId = form._id || form.id;
+      await updateForm(formId, form);
+      toast.success("Form saved successfully");
+      onBack();
+    } catch {
+      toast.error("Failed to save form");
+    } finally {
+      setIsSaving(false);
+    }
+  }, [form, updateForm, onBack, isSaving]);
 
   const shareUrl = `${window.location.origin}/form/${form._id || form.id}`;
 
   const handleDownloadQrCode = useCallback(async () => {
+    if (isQrGenerating) return;
+    setIsQrGenerating(true);
     try {
       const qrImageUrl = `https://quickchart.io/qr?text=${encodeURIComponent(shareUrl)}&size=1024&margin=2&format=png`;
       const response = await fetch(qrImageUrl);
@@ -285,8 +298,10 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
       toast.success("QR code downloaded");
     } catch {
       toast.error("Failed to download QR code");
+    } finally {
+      setIsQrGenerating(false);
     }
-  }, [shareUrl, form.title]);
+  }, [shareUrl, form.title, isQrGenerating]);
 
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-white relative overflow-hidden flex flex-col">
@@ -396,10 +411,20 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
               <Button
                 onClick={handleSave}
                 size="sm"
+                disabled={isSaving}
                 className="bg-white text-black hover:bg-white/90 rounded-lg font-medium px-3 sm:px-6"
               >
-                <Save className="w-4 h-4 sm:mr-2" />
-                <span className="hidden sm:inline">Save</span>
+                {isSaving ? (
+                  <>
+                    <Loader className="w-4 h-4 sm:mr-2 animate-spin" />
+                    <span className="hidden sm:inline">Saving...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Save</span>
+                  </>
+                )}
               </Button>
             </div>
           </div>
@@ -490,9 +515,19 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
                 variant="outline"
                 className="flex-1 bg-white/5 border-white/10 text-white hover:bg-white/10"
                 onClick={handleDownloadQrCode}
+                disabled={isQrGenerating}
               >
-                <Download className="w-4 h-4 mr-2" />
-                QR Code
+                {isQrGenerating ? (
+                  <>
+                    <Loader className="w-4 h-4 mr-2 animate-spin" />
+                    Generating QR Code...
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4 mr-2" />
+                    QR Code
+                  </>
+                )}
               </Button>
             </div>
           </div>
@@ -515,15 +550,25 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
                 <div className="flex bg-white/5 rounded-lg p-1 border border-white/10">
                   <button
                     onClick={() => setDevicePreview("desktop")}
-                    className={`p-2 rounded-md transition-all ${devicePreview === "desktop" ? "bg-white/10 text-white" : "text-white/40 hover:text-white/60"}`}
+                    className={`px-3 py-2 rounded-md transition-all text-sm font-medium flex items-center gap-2 ${
+                      devicePreview === "desktop"
+                        ? "bg-white/10 text-white"
+                        : "text-white/40 hover:text-white/60"
+                    }`}
                   >
                     <Monitor className="w-4 h-4" />
+                    <span>Desktop</span>
                   </button>
                   <button
                     onClick={() => setDevicePreview("mobile")}
-                    className={`p-2 rounded-md transition-all ${devicePreview === "mobile" ? "bg-white/10 text-white" : "text-white/40 hover:text-white/60"}`}
+                    className={`px-3 py-2 rounded-md transition-all text-sm font-medium flex items-center gap-2 ${
+                      devicePreview === "mobile"
+                        ? "bg-white/10 text-white"
+                        : "text-white/40 hover:text-white/60"
+                    }`}
                   >
                     <Smartphone className="w-4 h-4" />
+                    <span>Mobile</span>
                   </button>
                 </div>
               </div>
