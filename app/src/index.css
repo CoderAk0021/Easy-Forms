@@ -7,37 +7,27 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 220 14% 10%;
-    --card: 0 0% 100%;
-    --card-foreground: 220 14% 10%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 14% 10%;
-    --primary: 262 83% 58%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 220 14% 96%;
-    --secondary-foreground: 220 14% 10%;
-    --muted: 220 14% 96%;
-    --muted-foreground: 220 9% 46%;
-    --accent: 262 83% 58%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 262 83% 58%;
-    --radius: 0.625rem;
-    
-    --purple-50: 260 100% 98%;
-    --purple-100: 260 100% 95%;
-    --purple-200: 260 100% 90%;
-    --purple-300: 262 100% 82%;
-    --purple-400: 262 92% 68%;
-    --purple-500: 262 83% 58%;
-    --purple-600: 263 70% 50%;
-    --purple-700: 263 67% 42%;
-    --purple-800: 263 70% 34%;
-    --purple-900: 264 67% 28%;
+    /* Vercel Dark Theme - Zinc Scale */
+    --background: 0 0% 2%;           /* zinc-950 */
+    --foreground: 0 0% 98%;          /* zinc-100 */
+    --card: 0 0% 4%;                 /* zinc-900 */
+    --card-foreground: 0 0% 98%;     /* zinc-100 */
+    --popover: 0 0% 4%;              /* zinc-900 */
+    --popover-foreground: 0 0% 98%;  /* zinc-100 */
+    --primary: 0 0% 98%;             /* zinc-100 */
+    --primary-foreground: 0 0% 2%;   /* zinc-950 */
+    --secondary: 0 0% 12%;           /* zinc-800 */
+    --secondary-foreground: 0 0% 98%; /* zinc-100 */
+    --muted: 0 0% 12%;               /* zinc-800 */
+    --muted-foreground: 0 0% 52%;    /* zinc-500 */
+    --accent: 0 0% 15%;              /* zinc-750 equivalent */
+    --accent-foreground: 0 0% 98%;   /* zinc-100 */
+    --destructive: 0 72% 51%;        /* red-500 */
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 15%;              /* zinc-800 */
+    --input: 0 0% 15%;               /* zinc-800 */
+    --ring: 0 0% 30%;                /* zinc-600 */
+    --radius: 0.6rem;                  /* Sharp corners */
   }
 }
 
@@ -45,133 +35,111 @@
   * {
     @apply border-border;
   }
+  
   html {
     scroll-behavior: smooth;
   }
+  
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
-}
 
-@layer utilities {
-  .text-gradient {
-    @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #ec4899 100%);
+  /* Selection styling */
+  ::selection {
+    @apply bg-zinc-700 text-zinc-100;
   }
-  
-  .bg-gradient-purple {
-    background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
+
+  /* Hide scrollbars globally while keeping scroll behavior */
+  html,
+  body,
+  * {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
-  
-  .glass {
-    @apply bg-white/80 backdrop-blur-xl border border-white/20;
-  }
-  
-  .glass-dark {
-    @apply bg-black/20 backdrop-blur-xl border border-white/10;
-  }
-  
-  .shadow-glow {
-    box-shadow: 0 0 40px -10px rgba(124, 58, 237, 0.3);
-  }
-  
-  .shadow-glow-lg {
-    box-shadow: 0 0 60px -15px rgba(124, 58, 237, 0.4);
-  }
-}
 
-
-
-/* Animation utilities */
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-}
-
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 20px -5px rgba(124, 58, 237, 0.3); }
-  50% { box-shadow: 0 0 40px -5px rgba(124, 58, 237, 0.5); }
-}
-
-@keyframes slide-in {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.animate-float {
-  animation: float 6s ease-in-out infinite;
-}
-
-.animate-pulse-glow {
-  animation: pulse-glow 3s ease-in-out infinite;
-}
-
-.animate-slide-in {
-  animation: slide-in 0.5s ease-out forwards;
-}
-
-.animate-fade-in {
-  animation: fade-in 0.3s ease-out forwards;
-}
-
-/* Drag and drop styles */
-.dragging {
-  opacity: 0.5;
-  transform: scale(1.02);
-}
-
-.drag-over {
-  border: 2px dashed #7c3aed;
-  background: rgba(124, 58, 237, 0.05);
-}
-
-/* Form builder styles */
-.question-card {
-  @apply bg-white rounded-xl border border-gray-200 shadow-sm transition-all duration-200;
-}
-
-.question-card:hover {
-  @apply shadow-md border-purple-200;
-}
-
-.question-card.active {
-  @apply ring-2 ring-purple-500 border-purple-500;
-}
-
-/* Input focus styles */
-input:focus, textarea:focus, select:focus {
-  @apply outline-none ring-2 ring-purple-500/20 border-purple-500;
-}
-
-/* Button hover effects */
-.btn-magnetic {
-  @apply relative overflow-hidden transition-all duration-300;
-}
-
-.btn-magnetic::before {
-  content: '';
-  @apply absolute inset-0 bg-white/20 translate-y-full transition-transform duration-300;
-}
-
-.btn-magnetic:hover::before {
-  @apply translate-y-0;
-}
-
-@layer utilities {
-  /* Hide scrollbar for Chrome, Safari and Opera */
-  .no-scrollbar::-webkit-scrollbar {
+  *::-webkit-scrollbar {
+    width: 0;
+    height: 0;
     display: none;
   }
+}
 
-  /* Hide scrollbar for IE, Edge and Firefox */
-  .no-scrollbar {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
+@layer utilities {
+  /* Typography utilities */
+  .text-balance {
+    text-wrap: balance;
   }
+  
+  .font-mono {
+    font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  }
+
+  /* Focus visible styling */
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-600;
+  }
+
+  /* Border utilities */
+  .border-subtle {
+    @apply border-zinc-800;
+  }
+
+  .border-default {
+    @apply border-zinc-700;
+  }
+
+  /* Background utilities */
+  .bg-elevated {
+    @apply bg-zinc-900;
+  }
+
+  .bg-sunken {
+    @apply bg-zinc-950;
+  }
+
+  /* Text utilities */
+  .text-secondary {
+    @apply text-zinc-400;
+  }
+
+  .text-tertiary {
+    @apply text-zinc-500;
+  }
+}
+
+/* Form element base styles */
+input,
+textarea,
+select {
+  @apply bg-zinc-950 border-zinc-800 text-zinc-100 placeholder:text-zinc-600;
+  @apply focus:outline-none focus:border-zinc-600 focus:ring-0;
+  @apply transition-colors duration-200;
+}
+
+/* Button base styles */
+button {
+  @apply transition-colors duration-200;
+}
+
+button:disabled {
+  @apply opacity-50 cursor-not-allowed;
+}
+
+/* Link styles */
+a {
+  @apply text-zinc-300 hover:text-zinc-100 transition-colors duration-200;
+}
+
+/* Remove default focus outlines, use ring instead */
+*:focus {
+  @apply outline-none;
+}
+
+/* Ensure consistent border color inheritance */
+*,
+*::before,
+*::after {
+  border-color: hsl(var(--border));
 }
