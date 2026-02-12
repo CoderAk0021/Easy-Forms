@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { 
   Sparkles, 
   ArrowRight, 
-  Loader2, 
+  Loader, 
   Lock, 
   User 
 } from 'lucide-react';
@@ -35,8 +35,6 @@ export function LoginPage() {
     try {
       await login({ username, password });
       toast.success("Welcome back!");
-      // Small delay to let the success animation play if you had one, 
-      // otherwise instant redirect feels snappy
       navigate(from, { replace: true });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Invalid credentials";
@@ -128,7 +126,7 @@ export function LoginPage() {
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader className="w-4 h-4 animate-spin" />
                   <span>Signing in...</span>
                 </>
               ) : (
@@ -141,12 +139,6 @@ export function LoginPage() {
 
           </form>
         </div>
-
-        {/* Footer Hint (Optional - Remove in production if not needed) */}
-        <p className="text-center text-[10px] text-white/20 mt-8">
-          Protected by secure authentication
-        </p>
-
       </motion.div>
     </div>
   );
