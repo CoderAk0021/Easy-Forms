@@ -16,6 +16,7 @@ import {
   List,
   Plus,
   X,
+  SeparatorHorizontal,
 } from 'lucide-react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -44,6 +45,7 @@ const iconMap: Record<QuestionType, React.ElementType> = {
   email: Mail,
   number: Hash,
   file_upload: Upload,
+  section_break: SeparatorHorizontal,
 };
 
 interface QuestionCardProps {
@@ -70,6 +72,7 @@ export function QuestionCard({
     attributes,
     listeners,
     setNodeRef,
+    setActivatorNodeRef,
     transform,
     transition,
     isDragging,
@@ -91,6 +94,8 @@ export function QuestionCard({
       options: [...(question.options || []), newOption],
     });
   };
+
+  const isSectionBreak = question.type === "section_break";
 
   const handleUpdateOption = (optionId: string, label: string) => {
     onUpdate({
@@ -135,14 +140,17 @@ export function QuestionCard({
         <div className="p-5 sm:p-6">
           <div className="mb-4 flex items-start gap-3">
             <button
+              ref={setActivatorNodeRef}
+              type="button"
               {...attributes}
               {...listeners}
-              className={`mt-1 rounded-md p-1.5 transition ${
+              className={`mt-1 rounded-md p-1.5 transition touch-none cursor-grab active:cursor-grabbing ${
                 isHovered || isActive
-                  ? 'bg-zinc-800 text-zinc-400'
-                  : 'text-zinc-600 opacity-0'
+                  ? 'bg-zinc-800 text-zinc-400 opacity-100'
+                  : 'text-zinc-600 opacity-100 sm:opacity-0'
               }`}
               onClick={(e) => e.stopPropagation()}
+              aria-label="Drag to reorder question"
             >
               <GripVertical className="h-4 w-4" />
             </button>
@@ -155,7 +163,7 @@ export function QuestionCard({
               <Input
                 value={question.title}
                 onChange={(e) => onUpdate({ title: e.target.value })}
-                placeholder="Untitled Question"
+                placeholder={isSectionBreak ? "Untitled Section" : "Untitled Question"}
                 className="border-0 border-b border-transparent bg-transparent px-0 text-base font-semibold text-zinc-100 hover:border-zinc-700 focus:border-zinc-600 focus:ring-0"
                 onClick={(e) => e.stopPropagation()}
               />
@@ -167,6 +175,7 @@ export function QuestionCard({
                   id={`required-${question.id}`}
                   checked={question.required}
                   onCheckedChange={(checked) => onUpdate({ required: checked })}
+                  disabled={isSectionBreak}
                   onClick={(e) => e.stopPropagation()}
                 />
                 <Label
@@ -220,6 +229,7 @@ export function QuestionCard({
               id={`required-mobile-${question.id}`}
               checked={question.required}
               onCheckedChange={(checked) => onUpdate({ required: checked })}
+              disabled={isSectionBreak}
               onClick={(e) => e.stopPropagation()}
             />
             <Label
@@ -231,12 +241,12 @@ export function QuestionCard({
             </Label>
           </div>
 
-          {(isActive || question.description) && (
+          {(isActive || question.description || isSectionBreak) && (
             <div className="mb-4 ml-12">
               <Textarea
                 value={question.description || ''}
                 onChange={(e) => onUpdate({ description: e.target.value })}
-                placeholder="Add help text..."
+                placeholder={isSectionBreak ? "Describe this section/page..." : "Add help text..."}
                 className="min-h-[44px] resize-none border-0 border-b border-transparent bg-transparent px-0 text-sm text-zinc-400 hover:border-zinc-700 focus:border-zinc-600 focus:ring-0"
                 rows={1}
                 onClick={(e) => e.stopPropagation()}
@@ -245,6 +255,12 @@ export function QuestionCard({
           )}
 
           <div className="ml-12" onClick={(e) => e.stopPropagation()}>
+            {question.type === "section_break" && (
+              <div className="rounded-md border border-dashed border-cyan-700/50 bg-cyan-950/20 px-4 py-4 text-sm text-cyan-200">
+                New page starts after this section in the public form.
+              </div>
+            )}
+
             {(question.type === 'short_text' || question.type === 'email' || question.type === 'number') && (
               <Input
                 placeholder={question.placeholder || 'Short answer'}

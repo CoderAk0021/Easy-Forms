@@ -22,6 +22,7 @@ const QuestionSchema = new mongoose.Schema({
       "email",
       "number",
       "file_upload",
+      "section_break",
     ],
   },
   title: { type: String, required: true },
@@ -41,6 +42,12 @@ const FormThemeSchema = new mongoose.Schema({
   primaryColor: { type: String, default: "#7c3aed" },
   backgroundColor: { type: String, default: "#ffffff" },
   fontFamily: { type: String, default: "Inter" },
+  logoUrl: { type: String, default: "" },
+  bannerUrl: { type: String, default: "" },
+  bannerPositionX: { type: Number, default: 50 },
+  bannerPositionY: { type: Number, default: 50 },
+  brandName: { type: String, default: "" },
+  brandTagline: { type: String, default: "" },
 });
 
 const FormSettingsSchema = new mongoose.Schema({
@@ -50,6 +57,18 @@ const FormSettingsSchema = new mongoose.Schema({
   confirmationMessage: {
     type: String,
     default: "Thank you for your response!",
+  },
+  emailNotification: {
+    enabled: { type: Boolean, default: false },
+    subject: {
+      type: String,
+      default: "Your response to {{formTitle}} was received",
+    },
+    message: {
+      type: String,
+      default:
+        'Hi {{email}},\n\nThank you for completing "{{formTitle}}". We have recorded your submission on {{submittedAt}}.',
+    },
   },
   limitOneResponse: { 
     type: Boolean, 

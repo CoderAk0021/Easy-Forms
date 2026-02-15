@@ -113,7 +113,7 @@ export default function ProtectedAppShell() {
 
           <nav className="flex items-center gap-1 overflow-x-auto">
             {tabs.map((tab) => {
-              const Icon = tab.icon;
+              
               const baseClass =
                 "relative inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm";
 
@@ -129,7 +129,7 @@ export default function ProtectedAppShell() {
                     }`
                   }
                 >
-                  <Icon className="h-4 w-4" />
+                  
                   {tab.label}
                 </NavLink>
               );

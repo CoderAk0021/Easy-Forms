@@ -1,54 +1,13 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { useForm, type FieldErrors } from 'react-hook-form';
-import { z } from 'zod';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { 
   AlertCircle,
   Loader,
 } from 'lucide-react';
-import { toast } from 'sonner';
 import { FormPreview } from '@/components/form-builder/FormPreview';
 import { useForms } from '@/hooks/useForms';
 import type { Form, FormResponse } from '@/types/form';
-
-const answerValueSchema = z.union([
-  z.string(),
-  z.number(),
-  z.array(z.string()),
-  z.null(),
-]);
-
-const createSubmissionSchema = (form: Form | null) =>
-  z
-    .object({
-      answers: z.record(z.string(), answerValueSchema),
-      googleToken: z.string().min(1, 'Authentication required before submitting'),
-    })
-    .superRefine((data, ctx) => {
-      if (!form) return;
-      for (const question of form.questions) {
-        if (!question.required) continue;
-        const value = data.answers[question.id];
-        const isMissing =
-          value === undefined ||
-          value === null ||
-          (typeof value === 'string' && value.trim() === '') ||
-          (Array.isArray(value) && value.length === 0);
-        if (isMissing) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ['answers', question.id],
-            message: `Required field: ${question.title}`,
-          });
-        }
-      }
-    });
-
-type SubmissionPayload = {
-  answers: Record<string, z.infer<typeof answerValueSchema>>;
-  googleToken: string;
-};
+import { validateSubmissionPayload } from '@/lib/form-validation';
 
 export function PublicForm() {
   const { formId } = useParams<{ formId: string }>();
@@ -56,16 +15,6 @@ export function PublicForm() {
   const [form, setForm] = useState<Form | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
-  const validationSchema = useMemo(() => createSubmissionSchema(form), [form]);
-  
-  const { setValue, handleSubmit: handleValidationSubmit } = useForm<SubmissionPayload>({
-    resolver: zodResolver(validationSchema),
-    defaultValues: {
-      answers: {},
-      googleToken: '',
-    },
-  });
 
   const loadForm = useCallback(async () => {
     if (!formId) return;
@@ -96,52 +45,44 @@ export function PublicForm() {
     setLoading(false);
   }, [formId, loadForm]);
 
-  const getFirstErrorMessage = (errors: FieldErrors<SubmissionPayload>) => {
-    const answerErrors = errors.answers;
-    if (answerErrors) {
-      for (const answerError of Object.values(answerErrors)) {
-        if (answerError && typeof answerError === 'object' && 'message' in answerError) {
-          const message = answerError.message;
-          if (typeof message === 'string') return message;
-        }
-      }
-    }
-    return errors.googleToken?.message || null;
-  };
+  const handleSubmit = async (answers: Record<string, unknown>, googleToken?: string) => {
+    if (!form || !formId) return;
 
-  const submitValidatedResponse = handleValidationSubmit(
-    async (values) => {
-      if (!formId) return;
-      const responseData: FormResponse['answers'] = Object.entries(values.answers).map(
-        ([questionId, value]) => ({
-          questionId,
-          value: value as FormResponse['answers'][number]['value'],
-        })
+    const validation = validateSubmissionPayload(form, answers, googleToken);
+    if (!validation.isValid) {
+      const firstIssue = validation.issues[0];
+      throw new Error(
+        firstIssue
+          ? `${firstIssue.questionTitle}: ${firstIssue.message}`
+          : 'Please complete all required fields',
       );
-      await submitResponse(formId, {
-        answers: responseData,
-        googleToken: values.googleToken,
-      });
-    },
-    (errors) => {
-      const errorMessage =
-        getFirstErrorMessage(errors) || 'Please complete all required fields';
-      toast.error(errorMessage);
     }
-  );
 
-  const handleSubmit = async (answers: Record<string, unknown>, googleToken: string) => {
-    setValue('answers', answers as SubmissionPayload['answers'], { shouldValidate: true });
-    setValue('googleToken', googleToken, { shouldValidate: true });
-    await submitValidatedResponse();
+    const responseData: FormResponse['answers'] = Object.entries(answers).map(
+      ([questionId, value]) => ({
+        questionId,
+        value: value as FormResponse['answers'][number]['value'],
+      })
+    );
+
+    const response = await submitResponse(formId, {
+      answers: responseData,
+      googleToken,
+    });
+
+    if (!response) {
+      throw new Error('Failed to submit response');
+    }
   };
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-950 p-4">
-        <div className="flex items-center gap-2 text-sm text-zinc-400">
+      <div className="flex min-h-screen items-center justify-center bg-[#060a12] p-4">
+        <div className="rounded-xl border border-white/10 bg-black/30 px-5 py-4 text-sm text-zinc-300">
+          <span className="inline-flex items-center gap-2">
           <Loader className="h-4 w-4 animate-spin" />
           Loading form
+          </span>
         </div>
       </div>
     );
@@ -150,22 +91,22 @@ export function PublicForm() {
   // --- Error State ---
   if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-950 p-4">
-        <div className="w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-900/70 p-8 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-zinc-700 bg-zinc-950">
-            <AlertCircle className="h-6 w-6 text-zinc-400" />
+      <div className="flex min-h-screen items-center justify-center bg-[#060a12] p-4">
+        <div className="w-full max-w-md rounded-2xl border border-white/10 bg-black/35 p-8 text-center backdrop-blur">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-zinc-950/80">
+            <AlertCircle className="h-6 w-6 text-zinc-300" />
           </div>
           <h2 className="text-xl font-semibold text-zinc-100">{error}</h2>
-          <p className="mt-2 text-sm text-zinc-500">
+          <p className="mt-2 text-sm text-zinc-400">
             Unable to access the requested form. Please verify the URL or contact the administrator.
           </p>
           <button
             onClick={() => window.location.reload()}
-            className="mt-6 inline-flex h-10 items-center justify-center rounded-md border border-zinc-700 bg-zinc-950 px-4 text-sm text-zinc-300 hover:bg-zinc-900"
+            className="mt-6 inline-flex h-10 items-center justify-center rounded-md border border-white/15 bg-zinc-900 px-4 text-sm text-zinc-200 hover:bg-zinc-800"
           >
             Try Again
           </button>
-          <p className="mt-5 text-xs font-mono uppercase text-zinc-700">
+          <p className="mt-5 text-xs font-mono uppercase text-zinc-600">
             Ref: {formId ? formId.substring(0, 8).toUpperCase() : 'NULL'}
           </p>
         </div>
@@ -176,11 +117,14 @@ export function PublicForm() {
   if (!form) return null;
 
   return (
-    <div className="min-h-screen bg-zinc-950 px-4 py-8 selection:bg-zinc-700 selection:text-zinc-100 sm:px-6">
-      <div className="mx-auto w-full max-w-[1200px]">
-        <div className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-4 sm:p-6">
-          <FormPreview form={form} onSubmit={handleSubmit} />
-        </div>
+    <div className="min-h-screen bg-[#080808] px-3 py-6 selection:bg-zinc-700 selection:text-zinc-100 sm:px-6 sm:py-8">
+      <div className="mx-auto w-full max-w-[940px]">
+       
+         
+          <div className="relative">
+            <FormPreview form={form} onSubmit={handleSubmit} />
+          </div>
+        
       </div>
     </div>
   );

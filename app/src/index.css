@@ -144,13 +144,7 @@ a {
   border-color: hsl(var(--border));
 }
 
-/* Global no-motion mode across app UI */
-*,
-*::before,
-*::after {
-  animation: none !important;
-  transition: none !important;
-}
+
 
 @keyframes spinner-rotate {
   from {

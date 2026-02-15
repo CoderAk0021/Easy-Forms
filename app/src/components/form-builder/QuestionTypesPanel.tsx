@@ -9,6 +9,7 @@ import {
   Mail,
   Hash,
   Upload,
+  SeparatorHorizontal,
   Plus,
 } from 'lucide-react';
 import { QUESTION_TYPE_LABELS, type QuestionType } from '@/types/form';
@@ -24,6 +25,7 @@ const iconMap: Record<QuestionType, React.ElementType> = {
   email: Mail,
   number: Hash,
   file_upload: Upload,
+  section_break: SeparatorHorizontal,
 };
 
 const typeCategories = [
@@ -37,7 +39,7 @@ const typeCategories = [
   },
   {
     title: 'Special',
-    types: ['rating', 'date', 'file_upload'] as QuestionType[],
+    types: ['rating', 'date', 'file_upload', 'section_break'] as QuestionType[],
   },
 ];
 

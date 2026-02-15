@@ -1,6 +1,6 @@
 import express from "express";
 import { validate } from '../middlewares/validate.js';
-import { createFormSchema } from '../validators/form.validator.js';
+import { createFormSchema, updateFormSchema } from '../validators/form.validator.js';
 
 import { checkCookies } from "../middlewares/auth.middleware.js";
 import {
@@ -13,6 +13,7 @@ import {
   handleSubmitAResponse,
   handleCheckStatus,
   handleGetPublicForm,
+  handleGetMailStatus,
 } from "../controllers/form.controllers.js";
 
 const router = express.Router();
@@ -20,6 +21,7 @@ const router = express.Router();
 
 // Get all forms
 router.get("/", checkCookies, handleGetAllForms);
+router.get("/mail/status", checkCookies, handleGetMailStatus);
 
 // Get a public form published
 router.get("/public/:id", handleGetPublicForm);
@@ -32,7 +34,7 @@ router.get('/:id', checkCookies, handleGetSingleForm);
 router.post("/", checkCookies, validate(createFormSchema), handleCreateNewForm);
 
 // Update a form
-router.put("/:id", checkCookies, handleUpdateForm);
+router.put("/:id", checkCookies, validate(updateFormSchema), handleUpdateForm);
 
 // Delete a form
 router.delete("/:id", checkCookies, handleDeleteForm);

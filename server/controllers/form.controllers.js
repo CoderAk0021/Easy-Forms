@@ -3,6 +3,7 @@ import Response from "../models/Response.js";
 import sanitize from "mongo-sanitize";
 import mongoose from "mongoose";
 import { verifyGoogleToken } from "../utils/googleAuth.js";
+import { getMailStatus, sendSubmissionReceipt } from "../utils/mailer.js";
 
 function isValidObjectId(id) {
   return mongoose.Types.ObjectId.isValid(id);
@@ -163,6 +164,33 @@ export async function handleSubmitAResponse(req, res) {
     form.responseCount += 1;
     await form.save();
 
+    const emailSettings = form.settings?.emailNotification;
+    const shouldSendReceipt = Boolean(
+      emailSettings?.enabled &&
+        verifiedEmail &&
+        typeof verifiedEmail === "string" &&
+        verifiedEmail.trim(),
+    );
+
+    if (shouldSendReceipt) {
+      try {
+        const receiptResult = await sendSubmissionReceipt({
+          to: String(verifiedEmail).trim().toLowerCase(),
+          formTitle: form.title,
+          submittedAt: response.submittedAt,
+          subjectTemplate: emailSettings?.subject,
+          messageTemplate: emailSettings?.message,
+        });
+        if (!receiptResult?.sent) {
+          console.warn(
+            `Submission receipt skipped for form ${String(form._id)}: ${receiptResult?.reason || "unknown_reason"}`,
+          );
+        }
+      } catch (mailError) {
+        console.error("Failed to send submission receipt:", mailError?.message || mailError);
+      }
+    }
+
     res.status(201).json(response);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -194,5 +222,13 @@ export async function handleCheckStatus(req, res) {
     return res.json({ submitted: !!response });
   } catch (error) {
     res.status(500).json({ message: "Server Error" });
+  }
+}
+
+export async function handleGetMailStatus(req, res) {
+  try {
+    return res.json(getMailStatus());
+  } catch (error) {
+    return res.status(500).json({ message: "Failed to read mail configuration status" });
   }
 }

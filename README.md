@@ -108,6 +108,22 @@ CLIENT_ID=<your-google-client-id>
 // App Credentials
 USER=<admin-username-or-email>
 PASS=<admin-password-or-app-password>
+
+// Mail (choose one provider mode)
+// Mode A: SMTP
+SMTP_HOST=<smtp-host>
+SMTP_PORT=587
+SMTP_USER=<smtp-username>
+SMTP_PASS=<smtp-password>
+SMTP_SECURE=false
+SMTP_FROM=<no-reply@your-domain.com>
+
+// Mode B: Mailtrap API token
+MAIL_TOKEN=<mailtrap-api-token>
+MAIL_FROM=<sandbox@example.com-or-verified-sender>
+MAIL_FROM_NAME=Form Builder
+MAILTRAP_USE_SANDBOX=true
+MAILTRAP_INBOX_ID=<mailtrap-inbox-id-for-sandbox>
 ```
 
 **_Start the backend server:_**

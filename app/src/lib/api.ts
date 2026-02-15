@@ -67,6 +67,17 @@ interface AuthVerifyResponse {
   message?: string;
 }
 
+export interface MailStatusResponse {
+  configured: boolean;
+  provider: "smtp" | "mailtrap" | null;
+  senderEmail: string | null;
+  missing: {
+    senderEmail: boolean;
+    smtpConfig: boolean;
+    mailtrapToken: boolean;
+  };
+}
+
 async function fetchApi<T>(
   endpoint: string,
   options: RequestInit = {},
@@ -160,6 +171,10 @@ export const formsApi = {
   getResponses: async (id: string): Promise<FormResponse[]> => {
     const data = await fetchApi<ApiPayload[]>(`/forms/${id}/responses`);
     return data.map(transformResponse);
+  },
+
+  getMailStatus: async (): Promise<MailStatusResponse> => {
+    return fetchApi<MailStatusResponse>("/forms/mail/status");
   },
 
   submitResponse: async (

@@ -1,9 +1,10 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
   DndContext,
   closestCenter,
   KeyboardSensor,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -30,6 +31,10 @@ import {
   Redo2,
   Download,
   Loader,
+  Image,
+  Building2,
+  Sparkles,
+  Mail,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,6 +58,7 @@ import { QuestionTypesPanel } from "./QuestionTypesPanel";
 import { QuestionCard } from "./QuestionCard";
 import { FormPreview } from "./FormPreview";
 import { useForms } from "@/hooks/useForms";
+import { uploadFile } from "@/lib/api";
 import type { Form, Question, QuestionType } from "@/types/form";
 import { DEFAULT_QUESTION } from "@/types/form";
 import { generateId } from "@/utils/id";
@@ -63,79 +69,353 @@ import { toast } from "sonner";
 interface SettingsContentProps {
   form: Form;
   onUpdateSettings: (updates: Partial<Form["settings"]>) => void;
+  onUploadThemeAsset: (
+    target: "logoUrl" | "bannerUrl",
+    file: File,
+  ) => Promise<void>;
+  isThemeAssetUploading: boolean;
 }
 
-const SettingsContent = ({ form, onUpdateSettings }: SettingsContentProps) => (
-  <div className="space-y-6">
-    <div className="space-y-4">
-      <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-900 border border-white/10">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center">
-            <Eye className="w-4 h-4 text-indigo-400" />
+const SettingsContent = ({
+  form,
+  onUpdateSettings,
+  onUploadThemeAsset,
+  isThemeAssetUploading,
+}: SettingsContentProps) => {
+  const logoInputRef = useRef<HTMLInputElement | null>(null);
+  const backgroundInputRef = useRef<HTMLInputElement | null>(null);
+  const bannerImageUrl =
+    form.settings.theme.bannerUrl || form.settings.theme.backgroundImageUrl;
+  const bannerPositionX =
+    typeof form.settings.theme.bannerPositionX === "number"
+      ? form.settings.theme.bannerPositionX
+      : 50;
+  const bannerPositionY =
+    typeof form.settings.theme.bannerPositionY === "number"
+      ? form.settings.theme.bannerPositionY
+      : 50;
+  const emailNotification = form.settings.emailNotification || {
+    enabled: false,
+    subject: "Your response to {{formTitle}} was received",
+    message:
+      'Hi {{email}},\n\nThank you for completing "{{formTitle}}". We have recorded your submission on {{submittedAt}}.',
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="space-y-4">
+        <div className="rounded-xl border border-white/10 bg-zinc-900 p-3">
+          <div className="mb-3 flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/20">
+              <Building2 className="h-4 w-4 text-indigo-300" />
+            </div>
+            <div>
+              <Label className="text-sm font-medium text-white">Branding</Label>
+                <p className="text-xs text-zinc-500">Logo, hero background, and labels</p>
+            </div>
           </div>
-          <div>
-            <Label
-              htmlFor="progress-bar"
-              className="text-sm font-medium text-white cursor-pointer"
-            >
-              Progress Bar
-            </Label>
-            <p className="text-xs text-zinc-500">Show completion progress</p>
+          <div className="space-y-3">
+            <Input
+              value={form.settings.theme.brandName || ""}
+              onChange={(e) =>
+                onUpdateSettings({
+                  theme: {
+                    ...form.settings.theme,
+                    brandName: e.target.value,
+                  },
+                })
+              }
+              placeholder="Brand name (optional)"
+              className="h-9 border-white/10 bg-zinc-950 text-zinc-100"
+            />
+            <Input
+              value={form.settings.theme.brandTagline || ""}
+              onChange={(e) =>
+                onUpdateSettings({
+                  theme: {
+                    ...form.settings.theme,
+                    brandTagline: e.target.value,
+                  },
+                })
+              }
+              placeholder="Brand tagline (optional)"
+              className="h-9 border-white/10 bg-zinc-950 text-zinc-100"
+            />
+            <div className="grid grid-cols-1 gap-2">
+              <button
+                type="button"
+                onClick={() => logoInputRef.current?.click()}
+                disabled={isThemeAssetUploading}
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-white/15 bg-zinc-950 px-3 text-sm text-zinc-200 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <Sparkles className="h-4 w-4" />
+                {form.settings.theme.logoUrl ? "Replace Logo" : "Upload Logo"}
+              </button>
+              <button
+                type="button"
+                onClick={() => backgroundInputRef.current?.click()}
+                disabled={isThemeAssetUploading}
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-white/15 bg-zinc-950 px-3 text-sm text-zinc-200 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <Image className="h-4 w-4" />
+                {form.settings.theme.bannerUrl || form.settings.theme.backgroundImageUrl
+                  ? "Replace Banner Image"
+                  : "Upload Banner Image"}
+              </button>
+            </div>
+            <p className="text-xs text-zinc-500">
+              Banner image appears at the top of the public form.
+            </p>
+            {bannerImageUrl && (
+              <div className="space-y-3 rounded-lg border border-white/10 bg-zinc-950/70 p-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium text-zinc-300">
+                    Horizontal Position
+                  </Label>
+                  <span className="text-xs text-zinc-500">{bannerPositionX}%</span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={bannerPositionX}
+                  onChange={(e) =>
+                    onUpdateSettings({
+                      theme: {
+                        ...form.settings.theme,
+                        bannerPositionX: Number(e.target.value),
+                      },
+                    })
+                  }
+                  className="w-full accent-indigo-400"
+                />
+
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium text-zinc-300">
+                    Vertical Position
+                  </Label>
+                  <span className="text-xs text-zinc-500">{bannerPositionY}%</span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={bannerPositionY}
+                  onChange={(e) =>
+                    onUpdateSettings({
+                      theme: {
+                        ...form.settings.theme,
+                        bannerPositionY: Number(e.target.value),
+                      },
+                    })
+                  }
+                  className="w-full accent-indigo-400"
+                />
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    onUpdateSettings({
+                      theme: {
+                        ...form.settings.theme,
+                        bannerPositionX: 50,
+                        bannerPositionY: 50,
+                      },
+                    })
+                  }
+                  className="inline-flex h-8 items-center justify-center rounded-md border border-white/15 bg-zinc-900 px-3 text-xs text-zinc-300 hover:bg-zinc-800"
+                >
+                  Reset Banner Position
+                </button>
+              </div>
+            )}
+            {(form.settings.theme.logoUrl ||
+              form.settings.theme.bannerUrl ||
+              form.settings.theme.backgroundImageUrl) && (
+              <div className="space-y-2">
+                {form.settings.theme.logoUrl && (
+                  <p className="truncate text-xs text-zinc-500">
+                    Logo: {form.settings.theme.logoUrl}
+                  </p>
+                )}
+                {(form.settings.theme.bannerUrl ||
+                  form.settings.theme.backgroundImageUrl) && (
+                  <p className="truncate text-xs text-zinc-500">
+                    Banner:{" "}
+                    {form.settings.theme.bannerUrl ||
+                      form.settings.theme.backgroundImageUrl}
+                  </p>
+                )}
+              </div>
+            )}
+            <input
+              ref={logoInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  void onUploadThemeAsset("logoUrl", file);
+                }
+                e.target.value = "";
+              }}
+            />
+            <input
+              ref={backgroundInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  void onUploadThemeAsset("bannerUrl", file);
+                }
+                e.target.value = "";
+              }}
+            />
           </div>
         </div>
-        <Switch
-          id="progress-bar"
-          checked={form.settings.showProgressBar}
-          onCheckedChange={(checked) =>
-            onUpdateSettings({ showProgressBar: checked })
+
+        <div className="flex items-center justify-between rounded-xl border border-white/10 bg-zinc-900 p-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/20">
+              <Eye className="h-4 w-4 text-indigo-400" />
+            </div>
+            <div>
+              <Label
+                htmlFor="progress-bar"
+                className="cursor-pointer text-sm font-medium text-white"
+              >
+                Progress Bar
+              </Label>
+              <p className="text-xs text-zinc-500">Show completion progress</p>
+            </div>
+          </div>
+          <Switch
+            id="progress-bar"
+            checked={form.settings.showProgressBar}
+            onCheckedChange={(checked) =>
+              onUpdateSettings({ showProgressBar: checked })
+            }
+            className="data-[state=checked]:bg-indigo-500"
+          />
+        </div>
+
+        <div className="flex items-center justify-between rounded-xl border border-white/10 bg-zinc-900 p-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-500/20">
+              <Copy className="h-4 w-4 text-cyan-400" />
+            </div>
+            <div>
+              <Label
+                htmlFor="multiple-responses"
+                className="cursor-pointer text-sm font-medium text-white"
+              >
+                Multiple Responses
+              </Label>
+              <p className="text-xs text-zinc-500">
+                Allow users to submit multiple times
+              </p>
+            </div>
+          </div>
+          <Switch
+            id="multiple-responses"
+            checked={form.settings.allowMultipleResponses}
+            onCheckedChange={(checked) =>
+              onUpdateSettings({ allowMultipleResponses: checked })
+            }
+            className="data-[state=checked]:bg-cyan-500"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <Label className="text-sm font-medium text-white">
+          Confirmation Message
+        </Label>
+        <Textarea
+          value={form.settings.confirmationMessage}
+          onChange={(e) =>
+            onUpdateSettings({ confirmationMessage: e.target.value })
           }
-          className="data-[state=checked]:bg-indigo-500"
+          placeholder="Thank you for your response!"
+          className="min-h-[100px] resize-none rounded-xl border-white/10 bg-zinc-900 text-white placeholder:text-zinc-600 focus:border-indigo-500/50 focus:ring-indigo-500/20"
         />
       </div>
 
-      <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-900 border border-white/10">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-cyan-500/20 flex items-center justify-center">
-            <Copy className="w-4 h-4 text-cyan-400" />
+      <div className="space-y-4 rounded-xl border border-white/10 bg-zinc-900 p-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20">
+              <Mail className="h-4 w-4 text-emerald-300" />
+            </div>
+            <div>
+              <Label
+                htmlFor="submission-email-receipt"
+                className="cursor-pointer text-sm font-medium text-white"
+              >
+                Email Receipt
+              </Label>
+              <p className="text-xs text-zinc-500">
+                Send a custom email after successful submission
+              </p>
+            </div>
           </div>
-          <div>
-            <Label
-              htmlFor="multiple-responses"
-              className="text-sm font-medium text-white cursor-pointer"
-            >
-              Multiple Responses
-            </Label>
+          <Switch
+            id="submission-email-receipt"
+            checked={emailNotification.enabled}
+            onCheckedChange={(checked) =>
+              onUpdateSettings({
+                emailNotification: {
+                  ...emailNotification,
+                  enabled: checked,
+                },
+              })
+            }
+            className="data-[state=checked]:bg-emerald-500"
+          />
+        </div>
+
+        {emailNotification.enabled && (
+          <div className="space-y-3 border-t border-white/10 pt-3">
+            <Input
+              value={emailNotification.subject}
+              onChange={(e) =>
+                onUpdateSettings({
+                  emailNotification: {
+                    ...emailNotification,
+                    subject: e.target.value,
+                  },
+                })
+              }
+              placeholder="Email subject"
+              className="h-9 border-white/10 bg-zinc-950 text-zinc-100"
+            />
+            <Textarea
+              value={emailNotification.message}
+              onChange={(e) =>
+                onUpdateSettings({
+                  emailNotification: {
+                    ...emailNotification,
+                    message: e.target.value,
+                  },
+                })
+              }
+              placeholder="Email message"
+              className="min-h-[120px] resize-none rounded-xl border-white/10 bg-zinc-950 text-white placeholder:text-zinc-600"
+            />
             <p className="text-xs text-zinc-500">
-              Allow users to submit multiple times
+              Variables: {"{{email}}"}, {"{{formTitle}}"}, {"{{submittedAt}}"}
             </p>
           </div>
-        </div>
-        <Switch
-          id="multiple-responses"
-          checked={form.settings.allowMultipleResponses}
-          onCheckedChange={(checked) =>
-            onUpdateSettings({ allowMultipleResponses: checked })
-          }
-          className="data-[state=checked]:bg-cyan-500"
-        />
+        )}
       </div>
     </div>
-
-    <div className="space-y-3">
-      <Label className="text-sm font-medium text-white">
-        Confirmation Message
-      </Label>
-      <Textarea
-        value={form.settings.confirmationMessage}
-        onChange={(e) =>
-          onUpdateSettings({ confirmationMessage: e.target.value })
-        }
-        placeholder="Thank you for your response!"
-        className="bg-zinc-900 border-white/10 text-white placeholder:text-zinc-600 focus:border-indigo-500/50 focus:ring-indigo-500/20 rounded-xl min-h-[100px] resize-none"
-      />
-    </div>
-  </div>
-);
+  );
+};
 
 // --- FIX END ---
 
@@ -144,17 +424,188 @@ interface FormEditorProps {
   onBack: () => void;
 }
 
+interface MobileActionBarProps {
+  form: Form;
+  onAddQuestion: (type: QuestionType) => void;
+  onUpdateSettings: (updates: Partial<Form["settings"]>) => void;
+  onUploadThemeAsset: (
+    target: "logoUrl" | "bannerUrl",
+    file: File,
+  ) => Promise<void>;
+  isThemeAssetUploading: boolean;
+}
+
+const MobileActionBar = ({
+  form,
+  onAddQuestion,
+  onUpdateSettings,
+  onUploadThemeAsset,
+  isThemeAssetUploading,
+}: MobileActionBarProps) => {
+  const [showMobileAdd, setShowMobileAdd] = useState(false);
+  const [showMobileSettings, setShowMobileSettings] = useState(false);
+
+  return (
+    <div className="lg:hidden grid grid-cols-2 gap-3 mb-2 sticky top-0 z-20 pb-2">
+      <Sheet open={showMobileAdd} onOpenChange={setShowMobileAdd}>
+        <SheetTrigger asChild>
+          <Button className="w-full bg-zinc-100 text-gray-900 hover:bg-zinc-200 shadow-lg shadow-indigo-500/20">
+            <Plus className="w-4 h-4 mr-2" />
+            Add Question
+          </Button>
+        </SheetTrigger>
+        <SheetContent
+          side="bottom"
+          className="h-[70vh] bg-zinc-950 border-white/10 p-0 rounded-t-2xl overflow-y-auto scrollbar-hide"
+        >
+          <div className="p-6">
+            <SheetHeader className="mb-4 text-left">
+              <SheetTitle className="text-white">
+                Select Question Type
+              </SheetTitle>
+            </SheetHeader>
+            <QuestionTypesPanel
+              onAddQuestion={(type) => {
+                onAddQuestion(type);
+                setShowMobileAdd(false);
+              }}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={showMobileSettings} onOpenChange={setShowMobileSettings}>
+        <SheetTrigger asChild>
+          <Button
+            variant="outline"
+            className="w-full bg-zinc-900 border-white/10 text-white hover:bg-zinc-800"
+          >
+            <Settings className="w-4 h-4 mr-2" />
+            Settings
+          </Button>
+        </SheetTrigger>
+        <SheetContent
+          side="right"
+          className="w-[70%] px-5 sm:w-[400px] bg-zinc-950 border-white/10"
+        >
+          <SheetHeader>
+            <SheetTitle className="text-white flex items-center gap-2">
+              <Settings className="w-5 h-5 text-indigo-400" />
+              Form Settings
+            </SheetTitle>
+          </SheetHeader>
+          <div className="mt-6">
+            <SettingsContent
+              form={form}
+              onUpdateSettings={onUpdateSettings}
+              onUploadThemeAsset={onUploadThemeAsset}
+              isThemeAssetUploading={isThemeAssetUploading}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
+    </div>
+  );
+};
+
+const escapeHtml = (value: string) =>
+  value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+
+const renderInlineMarkdown = (value: string) =>
+  value
+    .replace(
+      /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+      '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-cyan-300 hover:text-cyan-200 underline underline-offset-2">$1</a>',
+    )
+    .replace(
+      /`([^`]+)`/g,
+      '<code class="px-1.5 py-0.5 rounded bg-zinc-950 border border-white/10 text-zinc-200">$1</code>',
+    )
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*([^*]+)\*/g, "<em>$1</em>")
+    .replace(/~~([^~]+)~~/g, "<s>$1</s>");
+
+const renderMarkdownPreview = (value: string) => {
+  const lines = escapeHtml(value).split(/\r?\n/);
+  const output: string[] = [];
+  let inList = false;
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+
+    if (!line) {
+      if (inList) {
+        output.push("</ul>");
+        inList = false;
+      }
+      continue;
+    }
+
+    const heading = line.match(/^(#{1,6})\s+(.+)$/);
+    if (heading) {
+      if (inList) {
+        output.push("</ul>");
+        inList = false;
+      }
+      const level = heading[1].length;
+      output.push(
+        `<h${level} class="font-semibold text-white">${renderInlineMarkdown(heading[2])}</h${level}>`,
+      );
+      continue;
+    }
+
+    const listItem = line.match(/^[-*]\s+(.+)$/);
+    if (listItem) {
+      if (!inList) {
+        output.push('<ul class="list-disc ml-5 space-y-1">');
+        inList = true;
+      }
+      output.push(`<li>${renderInlineMarkdown(listItem[1])}</li>`);
+      continue;
+    }
+
+    if (inList) {
+      output.push("</ul>");
+      inList = false;
+    }
+
+    const quote = line.match(/^>\s+(.+)$/);
+    if (quote) {
+      output.push(
+        `<blockquote class="border-l-2 border-cyan-500/50 pl-3 italic text-zinc-300">${renderInlineMarkdown(quote[1])}</blockquote>`,
+      );
+      continue;
+    }
+
+    if (/^---+$/.test(line)) {
+      output.push('<hr class="border-white/10 my-2" />');
+      continue;
+    }
+
+    output.push(`<p>${renderInlineMarkdown(line)}</p>`);
+  }
+
+  if (inList) output.push("</ul>");
+  return output.join("");
+};
+
 export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
   const [form, setForm] = useState<Form>(initialForm);
   const [activeQuestionId, setActiveQuestionId] = useState<string | null>(null);
   const [showShareDialog, setShowShareDialog] = useState(false);
-  const [showMobileAdd, setShowMobileAdd] = useState(false);
-  const [showMobileSettings, setShowMobileSettings] = useState(false);
 
   const [previewMode, setPreviewMode] = useState(false);
+  const [isEditingFormHeader, setIsEditingFormHeader] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isQrGenerating, setIsQrGenerating] = useState(false);
+  const [isThemeAssetUploading, setIsThemeAssetUploading] = useState(false);
+  const formHeaderTitleInputRef = useRef<HTMLInputElement | null>(null);
   const [devicePreview, setDevicePreview] = useState<"desktop" | "mobile">(
     "desktop",
   );
@@ -162,7 +613,13 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: { distance: 8 },
+      activationConstraint: { distance: 4 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 120,
+        tolerance: 6,
+      },
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
@@ -184,20 +641,29 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
   }, []);
 
   const handleAddQuestion = useCallback((type: QuestionType) => {
-    const newQuestion: Question = {
-      ...DEFAULT_QUESTION,
-      id: generateId(),
-      type,
-      title: `Untitled ${type.replace(/_/g, " ")} question`,
-    };
-    if (type === "rating") newQuestion.maxRating = 5;
+    const questionId = generateId();
+    setForm((prev) => {
+      const sectionCount = prev.questions.filter(
+        (q) => q.type === "section_break",
+      ).length;
+      const newQuestion: Question = {
+        ...DEFAULT_QUESTION,
+        id: questionId,
+        type,
+        title:
+          type === "section_break"
+            ? `Section ${sectionCount + 1}`
+            : `Untitled ${type.replace(/_/g, " ")} question`,
+        required: type === "section_break" ? false : DEFAULT_QUESTION.required,
+      };
+      if (type === "rating") newQuestion.maxRating = 5;
 
-    setForm((prev) => ({
-      ...prev,
-      questions: [...prev.questions, newQuestion],
-    }));
-    setActiveQuestionId(newQuestion.id);
-    setShowMobileAdd(false);
+      return {
+        ...prev,
+        questions: [...prev.questions, newQuestion],
+      };
+    });
+    setActiveQuestionId(questionId);
     toast.success("Question added");
   }, []);
 
@@ -246,10 +712,60 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
     (updates: Partial<Form["settings"]>) => {
       setForm((prev) => ({
         ...prev,
-        settings: { ...prev.settings, ...updates },
+        settings: {
+          ...prev.settings,
+          ...updates,
+          theme: {
+            ...prev.settings.theme,
+            ...(updates.theme || {}),
+          },
+        },
       }));
     },
     [],
+  );
+
+  const handleUploadThemeAsset = useCallback(
+    async (target: "logoUrl" | "bannerUrl", file: File) => {
+      if (isThemeAssetUploading) return;
+      setIsThemeAssetUploading(true);
+      try {
+        const uploaded = await uploadFile(file);
+        setForm((prev) => ({
+          ...prev,
+          settings: {
+            ...prev.settings,
+            theme: {
+              ...prev.settings.theme,
+              [target]: uploaded.url,
+              ...(target === "bannerUrl"
+                ? {
+                    backgroundImageUrl: uploaded.url,
+                    bannerPositionX:
+                      typeof prev.settings.theme.bannerPositionX === "number"
+                        ? prev.settings.theme.bannerPositionX
+                        : 50,
+                    bannerPositionY:
+                      typeof prev.settings.theme.bannerPositionY === "number"
+                        ? prev.settings.theme.bannerPositionY
+                        : 50,
+                  }
+                : {}),
+            },
+          },
+        }));
+        toast.success(
+          target === "logoUrl"
+            ? "Logo uploaded successfully"
+            : "Banner uploaded successfully",
+        );
+      } catch {
+        toast.error("Failed to upload image");
+      } finally {
+        setIsThemeAssetUploading(false);
+      }
+    },
+    [isThemeAssetUploading],
   );
 
   const handleSave = useCallback(async () => {
@@ -301,6 +817,12 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
       setIsQrGenerating(false);
     }
   }, [shareUrl, form.title, isQrGenerating]);
+
+  useEffect(() => {
+    if (isEditingFormHeader) {
+      formHeaderTitleInputRef.current?.focus();
+    }
+  }, [isEditingFormHeader]);
 
   return (
     <div className="min-h-[60vh] rounded-lg border border-zinc-800 bg-zinc-950 text-white relative overflow-hidden flex flex-col">
@@ -574,62 +1096,13 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
         ) : (
           <div className="flex flex-col lg:flex-row gap-6 relative">
               {/* Mobile Action Bar */}
-              <div className="lg:hidden grid grid-cols-2 gap-3 mb-2 sticky top-0 z-20 pb-2">
-                <Sheet open={showMobileAdd} onOpenChange={setShowMobileAdd}>
-                  <SheetTrigger asChild>
-                    <Button className="w-full bg-zinc-100 hover:bg-zinc-200 text-white shadow-lg shadow-indigo-500/20">
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Question
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent
-                    side="bottom"
-                    className="h-[70vh] bg-zinc-950 border-white/10 p-0 rounded-t-2xl overflow-y-auto scrollbar-hide"
-                  >
-                    <div className="p-6">
-                      <SheetHeader className="mb-4 text-left">
-                        <SheetTitle className="text-white">
-                          Select Question Type
-                        </SheetTitle>
-                      </SheetHeader>
-                      <QuestionTypesPanel onAddQuestion={handleAddQuestion} />
-                    </div>
-                  </SheetContent>
-                </Sheet>
-
-                <Sheet
-                  open={showMobileSettings}
-                  onOpenChange={setShowMobileSettings}
-                >
-                  <SheetTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="w-full bg-zinc-900 border-white/10 text-white hover:bg-zinc-800"
-                    >
-                      <Settings className="w-4 h-4 mr-2" />
-                      Settings
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent
-                    side="right"
-                    className="w-[70%] px-5 sm:w-[400px] bg-zinc-950 border-white/10"
-                  >
-                    <SheetHeader>
-                      <SheetTitle className="text-white flex items-center gap-2">
-                        <Settings className="w-5 h-5 text-indigo-400" />
-                        Form Settings
-                      </SheetTitle>
-                    </SheetHeader>
-                    <div className="mt-6">
-                      {/* FIX: Usage of component in Mobile Sheet */}
-                      <SettingsContent
-                        form={form}
-                        onUpdateSettings={handleUpdateSettings}
-                      />
-                    </div>
-                  </SheetContent>
-                </Sheet>
-              </div>
+              <MobileActionBar
+                form={form}
+                onAddQuestion={handleAddQuestion}
+                onUpdateSettings={handleUpdateSettings}
+                onUploadThemeAsset={handleUploadThemeAsset}
+                isThemeAssetUploading={isThemeAssetUploading}
+              />
 
               {/* Left Sidebar - Tools (Desktop Only) */}
               <div className="hidden lg:block w-64 flex-shrink-0 scrollbar-hide">
@@ -665,26 +1138,57 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
                 <div className="relative group mb-6">
                   <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500/20 to-cyan-500/20 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity blur-sm" />
                   <div className="relative bg-zinc-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-4 sm:p-6 hover:border-white/20 transition-colors">
-                    <Input
-                      value={form.title}
-                      onChange={(e) =>
-                        setForm((prev) => ({ ...prev, title: e.target.value }))
-                      }
-                      placeholder="Form Title"
-                      className="text-xl sm:text-2xl font-bold bg-transparent border-0 border-b border-transparent hover:border-white/10 focus:border-indigo-500/50 focus:ring-0 px-0 text-white placeholder:text-zinc-700 mb-4"
-                    />
-                    <Textarea
-                      value={form.description}
-                      onChange={(e) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          description: e.target.value,
-                        }))
-                      }
-                      placeholder="Add a description to help respondents understand the purpose of this form..."
-                      className="bg-transparent border-0 border-b border-transparent hover:border-white/10 focus:border-indigo-500/50 focus:ring-0 px-0 text-white/70 placeholder:text-zinc-600 resize-none text-sm min-h-[60px]"
-                      rows={2}
-                    />
+                    {isEditingFormHeader ? (
+                      <div
+                        onBlur={(e) => {
+                          if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                            setIsEditingFormHeader(false);
+                          }
+                        }}
+                      >
+                        <Input
+                          ref={formHeaderTitleInputRef}
+                          value={form.title}
+                          onChange={(e) =>
+                            setForm((prev) => ({ ...prev, title: e.target.value }))
+                          }
+                          placeholder="# Form Title"
+                          className="text-xl sm:text-2xl font-bold bg-transparent border-0 border-b border-transparent hover:border-white/10 focus:border-indigo-500/50 focus:ring-0 px-2 text-white placeholder:text-zinc-700 mb-4"
+                        />
+                        <Textarea
+                          value={form.description}
+                          onChange={(e) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              description: e.target.value,
+                            }))
+                          }
+                          placeholder="Write your form intro in markdown..."
+                          className="bg-transparent border-0 border-b border-transparent hover:border-white/10 focus:border-indigo-500/50 focus:ring-0 px-2 text-white/70 placeholder:text-zinc-600 resize-y text-sm min-h-[60px]"
+                          rows={10}
+                        />
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingFormHeader(true)}
+                        className="block w-full text-left rounded-xl px-2 py-1 hover:bg-white/[0.03] transition-colors"
+                      >
+                        <div
+                          className="space-y-3 text-zinc-200 leading-relaxed"
+                          dangerouslySetInnerHTML={{
+                            __html: renderMarkdownPreview(
+                              form.title?.trim()
+                                ? `# ${form.title}\n\n${form.description || ""}`
+                                : "# Untitled Form\n\nAdd a description to help respondents understand the purpose of this form...",
+                            ),
+                          }}
+                        />
+                        <p className="mt-4 text-xs text-zinc-500">
+                          Click to edit markdown
+                        </p>
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -747,6 +1251,8 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
                     <SettingsContent
                       form={form}
                       onUpdateSettings={handleUpdateSettings}
+                      onUploadThemeAsset={handleUploadThemeAsset}
+                      isThemeAssetUploading={isThemeAssetUploading}
                     />
                   </div>
                 </div>
