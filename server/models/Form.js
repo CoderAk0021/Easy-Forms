@@ -58,6 +58,19 @@ const FormSettingsSchema = new mongoose.Schema({
     type: String,
     default: "Thank you for your response!",
   },
+  responseDeadlineAt: {
+    type: Date,
+    default: null,
+  },
+  maxResponses: {
+    type: Number,
+    default: null,
+    min: 1,
+  },
+  closedMessage: {
+    type: String,
+    default: "This form is no longer accepting responses.",
+  },
   emailNotification: {
     enabled: { type: Boolean, default: false },
     subject: {

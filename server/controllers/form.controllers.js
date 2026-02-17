@@ -1,17 +1,16 @@
 import Form from "../models/Form.js";
 import Response from "../models/Response.js";
 import sanitize from "mongo-sanitize";
-import mongoose from "mongoose";
 import { verifyGoogleToken } from "../utils/googleAuth.js";
 import { getMailStatus, sendSubmissionReceipt } from "../utils/mailer.js";
+import { isValidObjectId,getAutoCloseReason, syncFormPublicationState, getClosedMessage } from "../utils/form.utilities.js";
 
-function isValidObjectId(id) {
-  return mongoose.Types.ObjectId.isValid(id);
-}
+
 
 export async function handleGetAllForms(req, res) {
   try {
     const forms = await Form.find().sort({ createdAt: -1 });
+    await Promise.all(forms.map((form) => syncFormPublicationState(form)));
     res.json(forms);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -28,8 +27,10 @@ export async function handleGetPublicForm(req, res) {
     if (!form) {
       return res.status(404).json({ message: "Form not found" });
     }
+    await syncFormPublicationState(form);
     if (!form.isPublished) {
-      return res.status(403).json({ message: "Form is not published" });
+      const reason = getAutoCloseReason(form);
+      return res.status(403).json({ message: getClosedMessage(form, reason) });
     }
     res.json(form);
   } catch (error) {
@@ -47,6 +48,7 @@ export async function handleGetSingleForm(req, res) {
     if (!form) {
       return res.status(404).json({ message: "Form not found" });
     }
+    await syncFormPublicationState(form);
     res.json(form);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -58,6 +60,7 @@ export async function handleCreateNewForm(req, res) {
     const cleanBody = sanitize(req.body);
     const form = new Form(cleanBody);
     const savedForm = await form.save();
+    await syncFormPublicationState(savedForm);
     res.status(201).json(savedForm);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -78,6 +81,7 @@ export async function handleUpdateForm(req, res) {
     if (!form) {
       return res.status(404).json({ message: "Form not found" });
     }
+    await syncFormPublicationState(form);
     res.json(form);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -127,8 +131,10 @@ export async function handleSubmitAResponse(req, res) {
     if (!form) {
       return res.status(404).json({ message: "Form not found" });
     }
+    await syncFormPublicationState(form);
     if (!form.isPublished) {
-      return res.status(403).json({ message: "Form is not published" });
+      const reason = getAutoCloseReason(form);
+      return res.status(403).json({ message: getClosedMessage(form, reason) });
     }
     if (!req.body.googleToken) {
       return res.status(401).json({ message: "Google Sign In Required" });
@@ -163,6 +169,7 @@ export async function handleSubmitAResponse(req, res) {
     await response.save();
     form.responseCount += 1;
     await form.save();
+    await syncFormPublicationState(form);
 
     const emailSettings = form.settings?.emailNotification;
     const shouldSendReceipt = Boolean(
@@ -203,7 +210,10 @@ export async function handleCheckStatus(req, res) {
       return res.status(400).json({ message: "Invalid form id" });
     }
 
-    const form = await Form.findById(req.params.id).select("isPublished");
+    const form = await Form.findById(req.params.id).select(
+      "isPublished responseCount settings.responseDeadlineAt settings.maxResponses",
+    );
+    await syncFormPublicationState(form);
     if (!form || !form.isPublished) {
       return res.json({ submitted: false });
     }

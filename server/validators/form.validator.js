@@ -33,6 +33,9 @@ const settingsSchema = z.object({
   requireLogin: z.boolean().optional(),
   showProgressBar: z.boolean().optional(),
   confirmationMessage: z.string().optional(),
+  responseDeadlineAt: z.string().datetime().nullable().optional(),
+  maxResponses: z.number().int().min(1).nullable().optional(),
+  closedMessage: z.string().max(500).optional(),
   emailNotification: z.object({
     enabled: z.boolean().optional(),
     subject: z.string().max(200).optional(),
