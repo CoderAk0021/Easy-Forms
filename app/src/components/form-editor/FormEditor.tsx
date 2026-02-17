@@ -1,9 +1,10 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
   DndContext,
   closestCenter,
   KeyboardSensor,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -42,127 +43,134 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import { QuestionTypesPanel } from "./QuestionTypesPanel";
-import { QuestionCard } from "./QuestionCard";
-import { FormPreview } from "./FormPreview";
+import { QuestionTypesPanel } from "../form-editor/QuestionTypesPanel";
+import { QuestionCard } from "../form-editor/QuestionCard";
+import { FormPreview } from "@/components/form-preview";
+import { MobileActionBar, SettingsContent } from "@/components/form-editor";
 import { useForms } from "@/hooks/useForms";
+import { uploadFile } from "@/api";
 import type { Form, Question, QuestionType } from "@/types/form";
 import { DEFAULT_QUESTION } from "@/types/form";
 import { generateId } from "@/utils/id";
 import { toast } from "sonner";
-
-// --- FIX START: SettingsContent moved outside FormEditor ---
-
-interface SettingsContentProps {
-  form: Form;
-  onUpdateSettings: (updates: Partial<Form["settings"]>) => void;
-}
-
-const SettingsContent = ({ form, onUpdateSettings }: SettingsContentProps) => (
-  <div className="space-y-6">
-    <div className="space-y-4">
-      <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-900 border border-white/10">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center">
-            <Eye className="w-4 h-4 text-indigo-400" />
-          </div>
-          <div>
-            <Label
-              htmlFor="progress-bar"
-              className="text-sm font-medium text-white cursor-pointer"
-            >
-              Progress Bar
-            </Label>
-            <p className="text-xs text-zinc-500">Show completion progress</p>
-          </div>
-        </div>
-        <Switch
-          id="progress-bar"
-          checked={form.settings.showProgressBar}
-          onCheckedChange={(checked) =>
-            onUpdateSettings({ showProgressBar: checked })
-          }
-          className="data-[state=checked]:bg-indigo-500"
-        />
-      </div>
-
-      <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-900 border border-white/10">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-cyan-500/20 flex items-center justify-center">
-            <Copy className="w-4 h-4 text-cyan-400" />
-          </div>
-          <div>
-            <Label
-              htmlFor="multiple-responses"
-              className="text-sm font-medium text-white cursor-pointer"
-            >
-              Multiple Responses
-            </Label>
-            <p className="text-xs text-zinc-500">
-              Allow users to submit multiple times
-            </p>
-          </div>
-        </div>
-        <Switch
-          id="multiple-responses"
-          checked={form.settings.allowMultipleResponses}
-          onCheckedChange={(checked) =>
-            onUpdateSettings({ allowMultipleResponses: checked })
-          }
-          className="data-[state=checked]:bg-cyan-500"
-        />
-      </div>
-    </div>
-
-    <div className="space-y-3">
-      <Label className="text-sm font-medium text-white">
-        Confirmation Message
-      </Label>
-      <Textarea
-        value={form.settings.confirmationMessage}
-        onChange={(e) =>
-          onUpdateSettings({ confirmationMessage: e.target.value })
-        }
-        placeholder="Thank you for your response!"
-        className="bg-zinc-900 border-white/10 text-white placeholder:text-zinc-600 focus:border-indigo-500/50 focus:ring-indigo-500/20 rounded-xl min-h-[100px] resize-none"
-      />
-    </div>
-  </div>
-);
-
-// --- FIX END ---
 
 interface FormEditorProps {
   form: Form;
   onBack: () => void;
 }
 
+const escapeHtml = (value: string) =>
+  value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+
+const renderInlineMarkdown = (value: string) =>
+  value
+    .replace(
+      /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+      '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-cyan-300 hover:text-cyan-200 underline underline-offset-2">$1</a>',
+    )
+    .replace(
+      /`([^`]+)`/g,
+      '<code class="px-1.5 py-0.5 rounded bg-zinc-950 border border-white/10 text-zinc-200">$1</code>',
+    )
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*([^*]+)\*/g, "<em>$1</em>")
+    .replace(/~~([^~]+)~~/g, "<s>$1</s>");
+
+const renderMarkdownPreview = (value: string) => {
+  const lines = escapeHtml(value).split(/\r?\n/);
+  const output: string[] = [];
+  let inList = false;
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+
+    if (!line) {
+      if (inList) {
+        output.push("</ul>");
+        inList = false;
+      }
+      continue;
+    }
+
+    const heading = line.match(/^(#{1,6})\s+(.+)$/);
+    if (heading) {
+      if (inList) {
+        output.push("</ul>");
+        inList = false;
+      }
+      const level = heading[1].length;
+      output.push(
+        `<h${level} class="font-semibold text-white">${renderInlineMarkdown(heading[2])}</h${level}>`,
+      );
+      continue;
+    }
+
+    const listItem = line.match(/^[-*]\s+(.+)$/);
+    if (listItem) {
+      if (!inList) {
+        output.push('<ul class="list-disc ml-5 space-y-1">');
+        inList = true;
+      }
+      output.push(`<li>${renderInlineMarkdown(listItem[1])}</li>`);
+      continue;
+    }
+
+    if (inList) {
+      output.push("</ul>");
+      inList = false;
+    }
+
+    const quote = line.match(/^>\s+(.+)$/);
+    if (quote) {
+      output.push(
+        `<blockquote class="border-l-2 border-cyan-500/50 pl-3 italic text-zinc-300">${renderInlineMarkdown(quote[1])}</blockquote>`,
+      );
+      continue;
+    }
+
+    if (/^---+$/.test(line)) {
+      output.push('<hr class="border-white/10 my-2" />');
+      continue;
+    }
+
+    output.push(`<p>${renderInlineMarkdown(line)}</p>`);
+  }
+
+  if (inList) output.push("</ul>");
+  return output.join("");
+};
+
 export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
   const [form, setForm] = useState<Form>(initialForm);
   const [activeQuestionId, setActiveQuestionId] = useState<string | null>(null);
   const [showShareDialog, setShowShareDialog] = useState(false);
-  const [showMobileAdd, setShowMobileAdd] = useState(false);
-  const [showMobileSettings, setShowMobileSettings] = useState(false);
 
   const [previewMode, setPreviewMode] = useState(false);
+  const [isEditingFormHeader, setIsEditingFormHeader] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isQrGenerating, setIsQrGenerating] = useState(false);
+  const [isThemeAssetUploading, setIsThemeAssetUploading] = useState(false);
+  const formHeaderTitleInputRef = useRef<HTMLInputElement | null>(null);
   const [devicePreview, setDevicePreview] = useState<"desktop" | "mobile">(
-    "desktop",
+    "mobile",
   );
   const { updateForm } = useForms();
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: { distance: 8 },
+      activationConstraint: { distance: 4 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 120,
+        tolerance: 6,
+      },
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
@@ -184,20 +192,29 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
   }, []);
 
   const handleAddQuestion = useCallback((type: QuestionType) => {
-    const newQuestion: Question = {
-      ...DEFAULT_QUESTION,
-      id: generateId(),
-      type,
-      title: `Untitled ${type.replace(/_/g, " ")} question`,
-    };
-    if (type === "rating") newQuestion.maxRating = 5;
+    const questionId = generateId();
+    setForm((prev) => {
+      const sectionCount = prev.questions.filter(
+        (q) => q.type === "section_break",
+      ).length;
+      const newQuestion: Question = {
+        ...DEFAULT_QUESTION,
+        id: questionId,
+        type,
+        title:
+          type === "section_break"
+            ? `Section ${sectionCount + 1}`
+            : `Untitled ${type.replace(/_/g, " ")} question`,
+        required: type === "section_break" ? false : DEFAULT_QUESTION.required,
+      };
+      if (type === "rating") newQuestion.maxRating = 5;
 
-    setForm((prev) => ({
-      ...prev,
-      questions: [...prev.questions, newQuestion],
-    }));
-    setActiveQuestionId(newQuestion.id);
-    setShowMobileAdd(false);
+      return {
+        ...prev,
+        questions: [...prev.questions, newQuestion],
+      };
+    });
+    setActiveQuestionId(questionId);
     toast.success("Question added");
   }, []);
 
@@ -246,10 +263,60 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
     (updates: Partial<Form["settings"]>) => {
       setForm((prev) => ({
         ...prev,
-        settings: { ...prev.settings, ...updates },
+        settings: {
+          ...prev.settings,
+          ...updates,
+          theme: {
+            ...prev.settings.theme,
+            ...(updates.theme || {}),
+          },
+        },
       }));
     },
     [],
+  );
+
+  const handleUploadThemeAsset = useCallback(
+    async (target: "logoUrl" | "bannerUrl", file: File) => {
+      if (isThemeAssetUploading) return;
+      setIsThemeAssetUploading(true);
+      try {
+        const uploaded = await uploadFile(file);
+        setForm((prev) => ({
+          ...prev,
+          settings: {
+            ...prev.settings,
+            theme: {
+              ...prev.settings.theme,
+              [target]: uploaded.url,
+              ...(target === "bannerUrl"
+                ? {
+                    backgroundImageUrl: uploaded.url,
+                    bannerPositionX:
+                      typeof prev.settings.theme.bannerPositionX === "number"
+                        ? prev.settings.theme.bannerPositionX
+                        : 50,
+                    bannerPositionY:
+                      typeof prev.settings.theme.bannerPositionY === "number"
+                        ? prev.settings.theme.bannerPositionY
+                        : 50,
+                  }
+                : {}),
+            },
+          },
+        }));
+        toast.success(
+          target === "logoUrl"
+            ? "Logo uploaded successfully"
+            : "Banner uploaded successfully",
+        );
+      } catch {
+        toast.error("Failed to upload image");
+      } finally {
+        setIsThemeAssetUploading(false);
+      }
+    },
+    [isThemeAssetUploading],
   );
 
   const handleSave = useCallback(async () => {
@@ -302,9 +369,14 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
     }
   }, [shareUrl, form.title, isQrGenerating]);
 
+  useEffect(() => {
+    if (isEditingFormHeader) {
+      formHeaderTitleInputRef.current?.focus();
+    }
+  }, [isEditingFormHeader]);
+
   return (
     <div className="min-h-[60vh] rounded-lg border border-zinc-800 bg-zinc-950 text-white relative overflow-hidden flex flex-col">
-
       {/* Header */}
       <header className="z-30 border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -531,226 +603,212 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
       <main className="flex-1 relative z-10 w-full px-4 py-6 sm:px-6 lg:px-8">
         {previewMode ? (
           <div className="w-full flex flex-col items-center">
-              {/* Preview Controls */}
-              <div className="flex items-center justify-center gap-2 mb-6">
-                <div className="flex bg-zinc-900 rounded-lg p-1 border border-white/10">
-                  <button
-                    onClick={() => setDevicePreview("desktop")}
-                    className={`px-3 py-2 rounded-md transition-all text-sm font-medium flex items-center gap-2 ${
-                      devicePreview === "desktop"
-                        ? "bg-zinc-800 text-white"
-                        : "text-zinc-500 hover:text-zinc-400"
-                    }`}
-                  >
-                    <Monitor className="w-4 h-4" />
-                    <span>Desktop</span>
-                  </button>
-                  <button
-                    onClick={() => setDevicePreview("mobile")}
-                    className={`px-3 py-2 rounded-md transition-all text-sm font-medium flex items-center gap-2 ${
-                      devicePreview === "mobile"
-                        ? "bg-zinc-800 text-white"
-                        : "text-zinc-500 hover:text-zinc-400"
-                    }`}
-                  >
-                    <Smartphone className="w-4 h-4" />
-                    <span>Mobile</span>
-                  </button>
-                </div>
+            {/* Preview Controls */}
+            <div className="hidden md:flex items-center justify-center gap-2 mb-6">
+              <div className="flex bg-zinc-900 rounded-lg p-1 border border-white/10">
+                <button
+                  onClick={() => setDevicePreview("desktop")}
+                  className={`px-3 py-2 rounded-md transition-all text-sm font-medium flex items-center gap-2 ${
+                    devicePreview === "desktop"
+                      ? "bg-zinc-800 text-white"
+                      : "text-zinc-500 hover:text-zinc-400"
+                  }`}
+                >
+                  <Monitor className="w-4 h-4" />
+                  <span>Desktop</span>
+                </button>
+                <button
+                  onClick={() => setDevicePreview("mobile")}
+                  className={`px-3 py-2 rounded-md transition-all text-sm font-medium flex items-center gap-2 ${
+                    devicePreview === "mobile"
+                      ? "bg-zinc-800 text-white"
+                      : "text-zinc-500 hover:text-zinc-400"
+                  }`}
+                >
+                  <Smartphone className="w-4 h-4" />
+                  <span>Mobile</span>
+                </button>
               </div>
+            </div>
 
-              {/* Preview Container */}
+            {/* Preview Container */}
+            <div
+              className={`w-full ${devicePreview === "mobile" ? "max-w-[375px]" : "max-w-4xl"}`}
+            >
               <div
-                className={`w-full transition-all duration-500 ${devicePreview === "mobile" ? "max-w-[375px]" : "max-w-4xl"}`}
+                className={`overflow-x-hidden ${devicePreview === "mobile" ? "p-0" : "p-8"}`}
               >
-                <div className="bg-zinc-950 rounded-2xl border border-white/10 shadow-2xl shadow-black/50 overflow-hidden">
-                  <div className="h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-500" />
-                  <div className="p-4 sm:p-8 overflow-x-hidden">
-                    <FormPreview form={form} />
-                  </div>
-                </div>
+                <FormPreview form={form} previewDevice={devicePreview} />
               </div>
+            </div>
           </div>
         ) : (
           <div className="flex flex-col lg:flex-row gap-6 relative">
-              {/* Mobile Action Bar */}
-              <div className="lg:hidden grid grid-cols-2 gap-3 mb-2 sticky top-0 z-20 pb-2">
-                <Sheet open={showMobileAdd} onOpenChange={setShowMobileAdd}>
-                  <SheetTrigger asChild>
-                    <Button className="w-full bg-zinc-100 hover:bg-zinc-200 text-white shadow-lg shadow-indigo-500/20">
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Question
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent
-                    side="bottom"
-                    className="h-[70vh] bg-zinc-950 border-white/10 p-0 rounded-t-2xl overflow-y-auto scrollbar-hide"
-                  >
-                    <div className="p-6">
-                      <SheetHeader className="mb-4 text-left">
-                        <SheetTitle className="text-white">
-                          Select Question Type
-                        </SheetTitle>
-                      </SheetHeader>
-                      <QuestionTypesPanel onAddQuestion={handleAddQuestion} />
-                    </div>
-                  </SheetContent>
-                </Sheet>
+            {/* Mobile Action Bar */}
+            <MobileActionBar
+              form={form}
+              onAddQuestion={handleAddQuestion}
+              onUpdateSettings={handleUpdateSettings}
+              onUploadThemeAsset={handleUploadThemeAsset}
+              isThemeAssetUploading={isThemeAssetUploading}
+            />
 
-                <Sheet
-                  open={showMobileSettings}
-                  onOpenChange={setShowMobileSettings}
-                >
-                  <SheetTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="w-full bg-zinc-900 border-white/10 text-white hover:bg-zinc-800"
+            {/* Left Sidebar - Tools (Desktop Only) */}
+            <div className="hidden lg:block w-64 flex-shrink-0 scrollbar-hide">
+              <div className="sticky top-24 space-y-4 ">
+                <div className="bg-zinc-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-4 ">
+                  <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-4 px-2">
+                    Add Questions
+                  </h3>
+                  <QuestionTypesPanel onAddQuestion={handleAddQuestion} />
+                </div>
+
+                <div className="bg-zinc-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-4">
+                  <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-4 px-2">
+                    History
+                  </h3>
+                  <div className="flex gap-2">
+                    <button className="flex-1 p-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors flex items-center justify-center gap-2">
+                      <Undo2 className="w-4 h-4" />
+                      <span className="text-xs">Undo</span>
+                    </button>
+                    <button className="flex-1 p-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors flex items-center justify-center gap-2">
+                      <Redo2 className="w-4 h-4" />
+                      <span className="text-xs">Redo</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Center - Builder */}
+            <div className="flex-1 w-full min-w-0 max-w-3xl mx-auto">
+              {/* Form Header */}
+              <div className="relative group mb-6">
+                <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500/20 to-cyan-500/20 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity blur-sm" />
+                <div className="relative bg-zinc-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-4 sm:p-6 hover:border-white/20 transition-colors">
+                  {isEditingFormHeader ? (
+                    <div
+                      onBlur={(e) => {
+                        if (
+                          !e.currentTarget.contains(e.relatedTarget as Node)
+                        ) {
+                          setIsEditingFormHeader(false);
+                        }
+                      }}
                     >
-                      <Settings className="w-4 h-4 mr-2" />
-                      Settings
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent
-                    side="right"
-                    className="w-[70%] px-5 sm:w-[400px] bg-zinc-950 border-white/10"
-                  >
-                    <SheetHeader>
-                      <SheetTitle className="text-white flex items-center gap-2">
-                        <Settings className="w-5 h-5 text-indigo-400" />
-                        Form Settings
-                      </SheetTitle>
-                    </SheetHeader>
-                    <div className="mt-6">
-                      {/* FIX: Usage of component in Mobile Sheet */}
-                      <SettingsContent
-                        form={form}
-                        onUpdateSettings={handleUpdateSettings}
+                      <Input
+                        ref={formHeaderTitleInputRef}
+                        value={form.title}
+                        onChange={(e) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            title: e.target.value,
+                          }))
+                        }
+                        placeholder="# Form Title"
+                        className="text-md md:text-xl font-bold bg-transparent border-0 border-b border-transparent hover:border-white/10 focus:border-indigo-500/50 focus:ring-0 px-2 text-white placeholder:text-zinc-700 mb-4"
+                      />
+                      <Textarea
+                        value={form.description}
+                        onChange={(e) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            description: e.target.value,
+                          }))
+                        }
+                        placeholder="Write your form intro in markdown..."
+                        className="bg-transparent border-0 border-b border-transparent hover:border-white/10 focus:border-indigo-500/50 focus:ring-0 px-2 text-white/70 placeholder:text-zinc-600 resize-y text-sm min-h-[60px]"
+                        rows={10}
                       />
                     </div>
-                  </SheetContent>
-                </Sheet>
-              </div>
-
-              {/* Left Sidebar - Tools (Desktop Only) */}
-              <div className="hidden lg:block w-64 flex-shrink-0 scrollbar-hide">
-                <div className="sticky top-24 space-y-4 ">
-                  <div className="bg-zinc-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-4 ">
-                    <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-4 px-2">
-                      Add Questions
-                    </h3>
-                    <QuestionTypesPanel onAddQuestion={handleAddQuestion} />
-                  </div>
-
-                  <div className="bg-zinc-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-4">
-                    <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-4 px-2">
-                      History
-                    </h3>
-                    <div className="flex gap-2">
-                      <button className="flex-1 p-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors flex items-center justify-center gap-2">
-                        <Undo2 className="w-4 h-4" />
-                        <span className="text-xs">Undo</span>
-                      </button>
-                      <button className="flex-1 p-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors flex items-center justify-center gap-2">
-                        <Redo2 className="w-4 h-4" />
-                        <span className="text-xs">Redo</span>
-                      </button>
-                    </div>
-                  </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingFormHeader(true)}
+                      className="block w-full text-left rounded-xl px-2 py-1 hover:bg-white/[0.03] transition-colors"
+                    >
+                      <div
+                        className="space-y-3 text-zinc-200 leading-relaxed"
+                        dangerouslySetInnerHTML={{
+                          __html: renderMarkdownPreview(
+                            form.title?.trim()
+                              ? `# ${form.title}\n\n${form.description || ""}`
+                              : "# Untitled Form\n\nAdd a description to help respondents understand the purpose of this form...",
+                          ),
+                        }}
+                      />
+                      <p className="mt-4 text-xs text-zinc-500">
+                        Click to edit markdown
+                      </p>
+                    </button>
+                  )}
                 </div>
               </div>
 
-              {/* Center - Builder */}
-              <div className="flex-1 w-full min-w-0 max-w-3xl mx-auto">
-                {/* Form Header */}
-                <div className="relative group mb-6">
-                  <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500/20 to-cyan-500/20 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity blur-sm" />
-                  <div className="relative bg-zinc-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-4 sm:p-6 hover:border-white/20 transition-colors">
-                    <Input
-                      value={form.title}
-                      onChange={(e) =>
-                        setForm((prev) => ({ ...prev, title: e.target.value }))
-                      }
-                      placeholder="Form Title"
-                      className="text-xl sm:text-2xl font-bold bg-transparent border-0 border-b border-transparent hover:border-white/10 focus:border-indigo-500/50 focus:ring-0 px-0 text-white placeholder:text-zinc-700 mb-4"
-                    />
-                    <Textarea
-                      value={form.description}
-                      onChange={(e) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          description: e.target.value,
-                        }))
-                      }
-                      placeholder="Add a description to help respondents understand the purpose of this form..."
-                      className="bg-transparent border-0 border-b border-transparent hover:border-white/10 focus:border-indigo-500/50 focus:ring-0 px-0 text-white/70 placeholder:text-zinc-600 resize-none text-sm min-h-[60px]"
-                      rows={2}
-                    />
-                  </div>
-                </div>
-
-                {/* Questions List */}
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={handleDragEnd}
+              {/* Questions List */}
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={form.questions.map((q) => q.id)}
+                  strategy={verticalListSortingStrategy}
                 >
-                  <SortableContext
-                    items={form.questions.map((q) => q.id)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    {form.questions.map((question) => (
-                      <div key={question.id} className="mb-4">
-                          <QuestionCard
-                            question={question}
-                            isActive={activeQuestionId === question.id}
-                            onClick={() => setActiveQuestionId(question.id)}
-                            onUpdate={(updates) =>
-                              handleUpdateQuestion(question.id, updates)
-                            }
-                            onDelete={() => handleDeleteQuestion(question.id)}
-                            onDuplicate={() =>
-                              handleDuplicateQuestion(question.id)
-                            }
-                          />
-                      </div>
-                    ))}
-                  </SortableContext>
-                </DndContext>
-
-                {form.questions.length === 0 && (
-                  <div className="text-center py-16 bg-zinc-900/60 border border-dashed border-white/10 rounded-2xl">
-                    <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-zinc-900 flex items-center justify-center">
-                      <Plus className="w-8 h-8 text-zinc-700" />
+                  {form.questions.map((question) => (
+                    <div key={question.id} className="mb-4">
+                      <QuestionCard
+                        question={question}
+                        isActive={activeQuestionId === question.id}
+                        onClick={() => setActiveQuestionId(question.id)}
+                        onUpdate={(updates) =>
+                          handleUpdateQuestion(question.id, updates)
+                        }
+                        onDelete={() => handleDeleteQuestion(question.id)}
+                        onDuplicate={() => handleDuplicateQuestion(question.id)}
+                      />
                     </div>
-                    <p className="text-zinc-500 font-medium mb-2">
-                      Start building your form
-                    </p>
-                    <p className="text-sm text-zinc-700 px-4">
-                      Add your first question using the controls{" "}
-                      {window.innerWidth < 1024 ? "above" : "to the left"}
-                    </p>
-                  </div>
-                )}
-              </div>
+                  ))}
+                </SortableContext>
+              </DndContext>
 
-              {/* Right Sidebar - Settings (Desktop Only) */}
-              <div className="hidden lg:block w-72 flex-shrink-0">
-                <div className="sticky top-24">
-                  <div className="bg-zinc-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-5">
-                    <div className="flex items-center gap-2 mb-6">
-                      <Settings className="w-4 h-4 text-indigo-400" />
-                      <h3 className="text-sm font-semibold text-white">
-                        Form Settings
-                      </h3>
-                    </div>
-                    {/* FIX: Usage of component in Desktop Sidebar */}
-                    <SettingsContent
-                      form={form}
-                      onUpdateSettings={handleUpdateSettings}
-                    />
+              {form.questions.length === 0 && (
+                <div className="text-center py-16 bg-zinc-900/60 border border-dashed border-white/10 rounded-2xl">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-zinc-900 flex items-center justify-center">
+                    <Plus className="w-8 h-8 text-zinc-700" />
                   </div>
+                  <p className="text-zinc-500 font-medium mb-2">
+                    Start building your form
+                  </p>
+                  <p className="text-sm text-zinc-700 px-4">
+                    Add your first question using the controls{" "}
+                    {window.innerWidth < 1024 ? "above" : "to the left"}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Right Sidebar - Settings (Desktop Only) */}
+            <div className="hidden lg:block w-72 flex-shrink-0">
+              <div className="sticky top-24">
+                <div className="bg-zinc-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-5">
+                  <div className="flex items-center gap-2 mb-6">
+                    <Settings className="w-4 h-4 text-indigo-400" />
+                    <h3 className="text-sm font-semibold text-white">
+                      Form Settings
+                    </h3>
+                  </div>
+                  {/* FIX: Usage of component in Desktop Sidebar */}
+                  <SettingsContent
+                    form={form}
+                    onUpdateSettings={handleUpdateSettings}
+                    onUploadThemeAsset={handleUploadThemeAsset}
+                    isThemeAssetUploading={isThemeAssetUploading}
+                  />
                 </div>
               </div>
+            </div>
           </div>
         )}
       </main>

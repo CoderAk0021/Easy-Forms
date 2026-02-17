@@ -70,13 +70,19 @@ export function DashboardWorkspace({
     <main className="grid min-h-[60vh] grid-cols-1 gap-6 py-2 lg:grid-cols-[280px_minmax(0,1fr)]">
       <aside className="h-fit rounded-lg border border-zinc-800 bg-[#0b0b0b]">
         <div className="border-b border-zinc-800 px-4 py-3">
-          <p className="text-xs uppercase tracking-wide text-zinc-500">Metadata</p>
-          <h2 className="mt-1 text-sm font-medium text-zinc-100">Workspace stats</h2>
+          <p className="text-xs uppercase tracking-wide text-zinc-500">
+            Metadata
+          </p>
+          <h2 className="mt-1 text-sm font-medium text-zinc-100">
+            Workspace stats
+          </h2>
         </div>
         <div className="space-y-4 p-4">
           <div className="rounded-md border border-zinc-800 bg-zinc-900/40 p-3">
             <p className="text-xs text-zinc-500">Total forms</p>
-            <p className="mt-1 text-xl font-semibold text-zinc-100">{forms.length}</p>
+            <p className="mt-1 text-xl font-semibold text-zinc-100">
+              {forms.length}
+            </p>
           </div>
           <div className="rounded-md border border-zinc-800 bg-zinc-900/40 p-3">
             <p className="text-xs text-zinc-500">Total responses</p>
@@ -87,11 +93,15 @@ export function DashboardWorkspace({
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-md border border-zinc-800 bg-zinc-900/40 p-3">
               <p className="text-xs text-zinc-500">Published</p>
-              <p className="mt-1 text-lg font-semibold text-zinc-100">{publishedForms}</p>
+              <p className="mt-1 text-lg font-semibold text-zinc-100">
+                {publishedForms}
+              </p>
             </div>
             <div className="rounded-md border border-zinc-800 bg-zinc-900/40 p-3">
               <p className="text-xs text-zinc-500">Drafts</p>
-              <p className="mt-1 text-lg font-semibold text-zinc-100">{drafts}</p>
+              <p className="mt-1 text-lg font-semibold text-zinc-100">
+                {drafts}
+              </p>
             </div>
           </div>
           <div>
@@ -107,7 +117,9 @@ export function DashboardWorkspace({
                     key={form.id}
                     className="rounded-md border border-zinc-800 bg-zinc-900/30 px-3 py-2"
                   >
-                    <p className="truncate text-sm text-zinc-200">{form.title}</p>
+                    <p className="truncate text-sm text-zinc-200">
+                      {form.title}
+                    </p>
                     <p className="mt-1 text-xs text-zinc-500">
                       {form.responseCount} responses
                     </p>
@@ -167,7 +179,9 @@ export function DashboardWorkspace({
 
         {filteredForms.length === 0 ? (
           <div className="p-10 text-center">
-            <h4 className="text-base font-medium text-zinc-200">No forms found</h4>
+            <h4 className="text-base font-medium text-zinc-200">
+              No forms found
+            </h4>
             <p className="mt-2 text-sm text-zinc-500">
               Adjust your filters or create a new form.
             </p>
@@ -180,7 +194,9 @@ export function DashboardWorkspace({
                 className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-zinc-800 bg-zinc-900/30 px-4 py-3"
               >
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-zinc-100">{form.title}</p>
+                  <p className="truncate text-sm font-medium text-zinc-100">
+                    {form.title}
+                  </p>
                   <p className="mt-1 text-xs text-zinc-500">
                     Updated {formatDate(form.updatedAt)}
                   </p>
@@ -237,7 +253,9 @@ export function DashboardWorkspace({
                   </div>
 
                   <div>
-                    <p className="truncate text-sm font-medium text-zinc-100">{form.title}</p>
+                    <p className="truncate text-sm font-medium text-zinc-100">
+                      {form.title}
+                    </p>
                     <p className="mt-1 line-clamp-2 text-xs text-zinc-500">
                       {form.description || "No description provided"}
                     </p>
@@ -253,6 +271,61 @@ export function DashboardWorkspace({
                         <Clock className="h-3.5 w-3.5" />
                         {formatDate(form.updatedAt)}
                       </span>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger
+                          asChild
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button className="rounded p-1.5 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200">
+                            <MoreVertical className="h-4 w-4" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="end"
+                          className="w-40 border-zinc-700 bg-[#111111] text-zinc-200"
+                        >
+                          <DropdownMenuItem
+                            className="cursor-pointer focus:bg-zinc-800"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEditForm(form);
+                            }}
+                          >
+                            <Edit3 className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="cursor-pointer focus:bg-zinc-800"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onViewResponses(form);
+                            }}
+                          >
+                            <Globe className="mr-2 h-4 w-4" />
+                            Responses
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="cursor-pointer focus:bg-zinc-800"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onShareForm(form);
+                            }}
+                          >
+                            <Share2 className="mr-2 h-4 w-4" />
+                            Share
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="cursor-pointer text-red-400 focus:bg-red-950/40 focus:text-red-400"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDeleteForm(form._id || form.id);
+                            }}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   )}
                 </div>
@@ -272,64 +345,63 @@ export function DashboardWorkspace({
                       <BarChart2 className="h-3.5 w-3.5" />
                       {form.responseCount}
                     </span>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        asChild
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button className="rounded p-1.5 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200">
+                          <MoreVertical className="h-4 w-4" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        align="end"
+                        className="w-40 border-zinc-700 bg-[#111111] text-zinc-200"
+                      >
+                        <DropdownMenuItem
+                          className="cursor-pointer focus:bg-zinc-800"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEditForm(form);
+                          }}
+                        >
+                          <Edit3 className="mr-2 h-4 w-4" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="cursor-pointer focus:bg-zinc-800"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onViewResponses(form);
+                          }}
+                        >
+                          <Globe className="mr-2 h-4 w-4" />
+                          Responses
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="cursor-pointer focus:bg-zinc-800"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onShareForm(form);
+                          }}
+                        >
+                          <Share2 className="mr-2 h-4 w-4" />
+                          Share
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="cursor-pointer text-red-400 focus:bg-red-950/40 focus:text-red-400"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteForm(form._id || form.id);
+                          }}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 )}
-
-                <DropdownMenu>
-                  <DropdownMenuTrigger
-                    asChild
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <button className="rounded p-1.5 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200">
-                      <MoreVertical className="h-4 w-4" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    align="end"
-                    className="w-40 border-zinc-700 bg-[#111111] text-zinc-200"
-                  >
-                    <DropdownMenuItem
-                      className="cursor-pointer focus:bg-zinc-800"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onEditForm(form);
-                      }}
-                    >
-                      <Edit3 className="mr-2 h-4 w-4" />
-                      Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="cursor-pointer focus:bg-zinc-800"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onViewResponses(form);
-                      }}
-                    >
-                      <Globe className="mr-2 h-4 w-4" />
-                      Responses
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="cursor-pointer focus:bg-zinc-800"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onShareForm(form);
-                      }}
-                    >
-                      <Share2 className="mr-2 h-4 w-4" />
-                      Share
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="cursor-pointer text-red-400 focus:bg-red-950/40 focus:text-red-400"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDeleteForm(form._id || form.id);
-                      }}
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
               </div>
             ))}
           </div>

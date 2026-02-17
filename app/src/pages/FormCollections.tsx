@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import type { ComponentType } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { FileText, Loader, MessageSquareText, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useForms } from "@/hooks/useForms";
@@ -88,13 +88,6 @@ function FormCollectionLayout({
           ))}
         </div>
       )}
-
-      <div className="pt-1 text-xs text-zinc-500">
-        Public form link format:{" "}
-        <Link to="/dashboard" className="text-zinc-400 hover:text-zinc-200">
-          /form/:id
-        </Link>
-      </div>
     </section>
   );
 }

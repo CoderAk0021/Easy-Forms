@@ -2,7 +2,7 @@ import { Link, NavLink, Outlet, matchPath, useLocation } from "react-router-dom"
 import { ChevronRight, FileText, LayoutDashboard, MessageSquareText } from "lucide-react";
 import type { ComponentType } from "react";
 import Logo from "@/components/ui/Logo";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/context/auth";
 import { Button } from "@/components/ui/button";
 
 type NavTab = {
@@ -84,7 +84,7 @@ export default function ProtectedAppShell() {
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-40 border-b border-zinc-800 bg-[#0a0a0a]/95 backdrop-blur">
+      <header className="sticky top-0 z-40 border-b border-zinc-800 bg-[#000000]/95 backdrop-blur">
         <div className="mx-auto flex max-w-[1400px] flex-col gap-3 px-4 py-3 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between gap-4">
             <Link to="/dashboard" className="flex items-center gap-3">
@@ -111,9 +111,9 @@ export default function ProtectedAppShell() {
             </div>
           </div>
 
-          <nav className="flex items-center gap-1 overflow-x-auto">
+          <nav className="flex items-center gap-2 overflow-x-auto">
             {tabs.map((tab) => {
-              const Icon = tab.icon;
+              
               const baseClass =
                 "relative inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm";
 
@@ -129,14 +129,14 @@ export default function ProtectedAppShell() {
                     }`
                   }
                 >
-                  <Icon className="h-4 w-4" />
+                  
                   {tab.label}
                 </NavLink>
               );
             })}
           </nav>
 
-          <div className="flex items-center gap-2 border-t border-zinc-800 pt-3 text-xs text-zinc-500">
+          <div className="flex items-center gap-2 pt-3 text-xs text-zinc-500">
             {breadcrumbs.map((crumb, index) => (
               <div key={crumb.label} className="flex items-center gap-2">
                 {index > 0 && <ChevronRight className="h-3.5 w-3.5" />}

@@ -8,7 +8,8 @@ export type QuestionType =
   | 'date'
   | 'email'
   | 'number'
-  | 'file_upload';
+  | 'file_upload'
+  | 'section_break';
 
 export interface QuestionOption {
   id: string;
@@ -50,15 +51,32 @@ export interface FormSettings {
   requireLogin: boolean;
   showProgressBar: boolean;
   confirmationMessage: string;
+  responseDeadlineAt?: string | null;
+  maxResponses?: number | null;
+  closedMessage?: string;
+  emailNotification: FormEmailNotification;
   redirectUrl?: string;
   theme: FormTheme;
   limitOneResponse: boolean;
+}
+
+export interface FormEmailNotification {
+  enabled: boolean;
+  subject: string;
+  message: string;
 }
 
 export interface FormTheme {
   primaryColor: string;
   backgroundColor: string;
   fontFamily: string;
+  logoUrl?: string;
+  bannerUrl?: string;
+  backgroundImageUrl?: string;
+  bannerPositionX?: number;
+  bannerPositionY?: number;
+  brandName?: string;
+  brandTagline?: string;
 }
 
 export interface FormResponse {
@@ -100,6 +118,7 @@ export const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   email: 'Email',
   number: 'Number',
   file_upload: 'File Upload',
+  section_break: 'Section Break',
 };
 
 export const QUESTION_TYPE_ICONS: Record<QuestionType, string> = {
@@ -113,6 +132,7 @@ export const QUESTION_TYPE_ICONS: Record<QuestionType, string> = {
   email: 'Mail',
   number: 'Hash',
   file_upload: 'Upload',
+  section_break: 'SeparatorHorizontal',
 };
 
 export const DEFAULT_QUESTION: Question = {
@@ -141,11 +161,27 @@ export const DEFAULT_FORM: Form = {
     requireLogin: false,
     showProgressBar: true,
     limitOneResponse: true,
+    responseDeadlineAt: null,
+    maxResponses: null,
+    closedMessage: "This form is no longer accepting responses.",
     confirmationMessage: 'Thank you for your response!',
+    emailNotification: {
+      enabled: false,
+      subject: 'Your response to {{formTitle}} was received',
+      message:
+        'Hi {{email}},\n\nThank you for completing "{{formTitle}}". We have recorded your submission on {{submittedAt}}.',
+    },
     theme: {
       primaryColor: '#7c3aed',
       backgroundColor: '#ffffff',
       fontFamily: 'Inter',
+      logoUrl: '',
+      bannerUrl: '',
+      backgroundImageUrl: '',
+      bannerPositionX: 50,
+      bannerPositionY: 50,
+      brandName: '',
+      brandTagline: '',
     },
   },
   isPublished: false,

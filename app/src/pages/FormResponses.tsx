@@ -12,7 +12,7 @@ import {
   Search,
   Clock,
 } from 'lucide-react';
-import { ApiError, formsApi } from '../lib/api';
+import { ApiError, formsApi } from '@/api';
 import type { Form, FormResponse, Question, Answer } from '@/types/form';
 
 type FormResponseRow = FormResponse & { respondentEmail?: string };
@@ -114,13 +114,13 @@ export const FormResponses = () => {
     const headers = [
       'Submission Date',
       'Email',
-      ...form.questions.map((q: Question) => `"${q.title}"`),
+      ...questions.map((q: Question) => `"${q.title}"`),
     ];
 
     const rows = responses.map((response: FormResponseRow) => {
       const date = `"${new Date(response.submittedAt).toLocaleString()}"`;
       const respondentEmail = response.respondentEmail || 'Anonymous';
-      const answers = form.questions.map((q: Question) => {
+      const answers = questions.map((q: Question) => {
         const answerObj = response.answers.find((a: Answer) => a.questionId === q.id);
         let val = answerObj ? answerObj.value : '';
         if (Array.isArray(val)) val = val.join(', ');
@@ -158,7 +158,9 @@ export const FormResponses = () => {
     uniqueEmails: new Set(safeResponses.map((r) => r.respondentEmail)).size,
   };
 
-  const questions = form?.questions ?? [];
+  const questions = (form?.questions ?? []).filter(
+    (question) => question.type !== 'section_break',
+  );
 
   if (loading) {
     return (

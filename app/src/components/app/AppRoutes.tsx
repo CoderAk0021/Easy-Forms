@@ -2,7 +2,8 @@ import { useLocation,useNavigate,Route,Routes,Navigate } from "react-router-dom"
 import { LoginPage } from "@/pages/LoginPage";
 import { PublicForm } from "@/pages/PublicForm";
 import { Dashboard } from "@/pages/Dashboard";
-import ProtectedRoute from "../ProtectedRoute";
+import { LandingPage } from "@/pages/LandingPage";
+import ProtectedRoute from "./ProtectedRoute";
 import { FormResponses } from "@/pages/FormResponses";
 import EditorWrapper from "./EditorWrapper";
 import ProtectedAppShell from "./ProtectedAppShell";
@@ -16,6 +17,9 @@ export default function AppRoutes() {
     <Routes location={location} key={location.pathname}>
         
         {/* === PUBLIC ROUTES === */}
+
+        {/* 0. Landing Page */}
+        <Route path="/" element={<LandingPage />} />
         
         {/* 1. Login Page */}
         <Route path="/login" element={<LoginPage />} />
