@@ -53,7 +53,7 @@ It also applies when an individual is representing the project or organization i
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be reported by contacting the project maintainers:
 
-📧 **security@iste.org** or **iste.dev.team@example.com**
+ **istebitsbh01@gmail.com**
 
 All complaints will be reviewed and investigated promptly and fairly.  
 Maintainers will respect the privacy and security of the reporter.
