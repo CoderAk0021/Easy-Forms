@@ -1,113 +1,123 @@
-## Form Builder
 
-A full-stack application that allows admins to generate custom forms, manage questions, and publish them to the world to collect responses.
+<p align="center">
+  <img src="./app/public/logo.svg" width="120" />
+</p>
 
-## Feature
+<h1 align="center">EasyForms</h1>
+<p align="center">Open-source Form Builder built with the MERN stack </p>
 
-*   **Form** **Generation**:click-to-add interface for building forms.
-    
-*   **Publishing**:Generate public links for forms to share and collect responses.
-    
-*   **Response** **Collection**: Collect and view user submissions in real-time.
-    
-*   **Authentication**: Google Login support for easy sign-ins.
-    
-*   **Media** **Support**: Image handling via Cloudinary for form media.
-    
+<p align="center">
+  <img src="https://img.shields.io/badge/license-MIT-blue" />
+  <img src="https://img.shields.io/badge/stack-MERN-green" />
+  <img src="https://img.shields.io/badge/build-Vite-purple" />
+  <img src="https://img.shields.io/github/stars/ISTEBITS/EasyForms" />
+  <img src="https://img.shields.io/github/issues/ISTEBITS/EasyForms" />
+  <img src="https://img.shields.io/github/forks/ISTEBITS/EasyForms" />
+</p>
 
-## Tech Stack
+---
 
-*   **Frontend**: React (Vite)
-    
-*   **Backend**: Node.js, Express
-    
-*   **Database**: MongoDB
-    
-*   **Image** **Storage**: Cloudinary
-    
-*   **Authentication**: Google OAuth
-    
+EasyForms is a **full-featured open-source form builder platform** that allows admins to create, publish, and manage dynamic forms with branding, analytics-ready storage,custom email sending, secure submission workflows and many more.
 
-## Prerequisites
+This project is developed and maintained under the **ISTE Organization**.
 
-**_Before you begin, ensure you have the following installed:_**
+---
 
-*   [Nodejs](https://nodejs.org/)
-    
-*   A [MongoDB](https://www.mongodb.com/) (Local or Atlas) account for database
-    
-*   A [Cloudinary](https://cloudinary.com/) account for media storage.
-    
-*   A [Google Cloud Console](https://console.cloud.google.com/) project (for OAuth credentials)
-    
+##  Table of Contents
+- [Features](#-features)
+- [Tech Stack](#-tech-stack)
+- [Live Demo](#-live-demo)
+- [Installation & Setup](#installation--setup)
+- [Contributing](#-contributing)
+- [Branching Strategy](#branching-strategy)
+- [Maintainers](#-maintainers)
+- [Contributors](#-contributors)
+- [License](#-license)
+- [Contact](#contact)
 
-## Installation & Setup
+---
 
-### 1\. Clone the Repository
+##  Features
 
-```javascript
-git clone https://github.com/user/form-builder.git
+###  Core Features (v1)
+- Admin authentication (no public admin signup)
+- Create, update, delete, and fetch forms
+- Draft & published form states
+- MongoDB storage for forms and responses
+- Admin dashboard for form management
+- QR code generation for public form sharing
+- Multiple response control
+- Support for all input types (including file uploads)
+- Cloudinary integration for file storage
+- Drag-and-drop question reordering
+- Google OAuth required before submission
+
+###  v2 Enhancements
+- Test User (Using Google Auth)
+- Markdown-based form headers
+- Custom form banner image
+- Brand name & logo customization
+- Email notifications on form submission
+- Form submission deadline (time-based closing)
+- Response submission limits
+- UI and UX improvements
+
+---
+
+##  Tech Stack
+
+### Frontend
+- React + Vite  
+- Tailwind CSS / ShadCN UI  
+
+### Backend
+- Node.js  
+- Express.js  
+- MongoDB  
+
+### Cloud & Services
+- Cloudinary (file storage)
+- Google OAuth
+- Vercel (client deployment)
+- Render (server deployment)
+
+---
+
+##  Live Demo
+
+🔗 **Easy Forms:** https://easyforms.istebits.com  
+
+---
+
+##  Installation & Setup
+
+### 1️⃣ Clone Repository
+
+```bash
+git clone https://github.com/ISTEBITS/EasyForms.git
+cd EasyForms
 ```
 
-```javascript
-cd form-builder
-```
+---
 
-### 2\. Frontend Setup (app)
+### 2️⃣ Backend Setup (Server)
 
-Navigate to the frontend directory, install dependencies, and configure the environment.
-
-```javascript
-cd app
-npm install 
-```
-
-Create a **.env** file in the **app** directory and add the following keys:
-
-```javascript
-//The URL where your backend server is running
-VITE_API_URL=http://localhost:3001/api
-// Your Google OAuth Client ID
-VITE_CLIENT_ID=<your-google-client-id>
-```
-
-**_Start the frontend development server:_**
-
-```javascript
+```bash
+cd server
+npm install
 npm run dev
 ```
 
-> **The frontend will run on http://localhost:5173**
+#### Create `.env` in `/server`
 
-## 3\. Backend Setup (server)
+```env
 
-Open a new terminal, navigate to the server directory, install dependencies, and configure the environment.
-
-```javascript
-cd server
-npm install
-```
-
-**_Create a .env file in the server directory and add the following keys:_**
-
-```javascript
-// Server Configuration
 PORT=3001
-
-// Database Connection
 MONGODB_URI=<your-mongodb-connection-string>
-
-// Cloudinary Configuration (For image uploads)
 CLOUDINARY_CLOUD_NAME=<your-cloud-name>
 CLOUDINARY_API_KEY=<your-api-key>
 CLOUDINARY_API_SECRET=<your-api-secret>
-
-// GoogleAuth
 CLIENT_ID=<your-google-client-id>
-
-// App Credentials
-USER=<admin-username-or-email>
-PASS=<admin-password-or-app-password>
 
 // Mail (choose one provider mode)
 // Mode A: SMTP
@@ -126,165 +136,90 @@ MAILTRAP_USE_SANDBOX=true
 MAILTRAP_INBOX_ID=<mailtrap-inbox-id-for-sandbox>
 ```
 
-**_Start the backend server:_**
+---
 
-```javascript
-npm start
+### 3️⃣ Frontend Setup (Client)
+
+```bash
+cd client
+npm install
+npm run dev
 ```
 
-> **The backend will run on http://localhost:3001**
+#### Create `.env` in `/client`
 
-## Project Structure
+```env
+VITE_API_URL=http://localhost:5000
+VITE_CLIENT_ID=<your-google-client-id>
+```
 
-**_The Folder Structure of the web app is as following_**
+---
 
-> ├── app/
-> 
-> │ ├── src/
-> 
-> │ │ ├── components/
-> 
-> │ │ │ ├── form-builder/
-> 
-> │ │ │ │ ├── FormEditor.tsx
-> 
-> │ │ │ │ ├── FormPreview.tsx
-> 
-> │ │ │ │ ├── GoogleVerification.tsx
-> 
-> │ │ │ │ ├── QuestionCard.tsx
-> 
-> │ │ │ │ └── QuestionTypesPanel.tsx
-> 
-> │ │ │ ├── ui/
-> 
-> │ │ │ │ ├── alert-dialog.tsx
-> 
-> │ │ │ │ ├── button.tsx
-> 
-> │ │ │ │ ├── checkbox.tsx
-> 
-> │ │ │ │ ├── dialog.tsx
-> 
-> │ │ │ │ ├── dropdown-menu.tsx
-> 
-> │ │ │ │ ├── input.tsx
-> 
-> │ │ │ │ ├── label.tsx
-> 
-> │ │ │ │ ├── radio-group.tsx
-> 
-> │ │ │ │ ├── select.tsx
-> 
-> │ │ │ │ ├── sheet.tsx
-> 
-> │ │ │ │ ├── sonner.tsx
-> 
-> │ │ │ │ ├── switch.tsx
-> 
-> │ │ │ │ └── textarea.tsx
-> 
-> │ │ │ └── ProtectedRoute.tsx
-> 
-> │ │ ├── context/
-> 
-> │ │ │ └── AuthContext.tsx
-> 
-> │ │ ├── hooks/
-> 
-> │ │ │ └── useForms.ts
-> 
-> │ │ ├── lib/
-> 
-> │ │ │ ├── api.ts
-> 
-> │ │ │ └── utils.ts
-> 
-> │ │ ├── pages/
-> 
-> │ │ │ ├── Dashboard.tsx
-> 
-> │ │ │ ├── FormResponses.tsx
-> 
-> │ │ │ ├── LandingPage.tsx
-> 
-> │ │ │ ├── LoginPage.tsx
-> 
-> │ │ │ └── PublicForm.tsx
-> 
-> │ │ ├── types/
-> 
-> │ │ │ └── form.ts
-> 
-> │ │ ├── utils/
-> 
-> │ │ │ └── id.ts
-> 
-> │ │ ├── App.css
-> 
-> │ │ ├── App.tsx
-> 
-> │ │ ├── index.css
-> 
-> │ │ └── main.tsx
-> 
-> │ ├── components.json
-> 
-> │ ├── eslint.config.js
-> 
-> │ ├── index.html
-> 
-> │ ├── package-lock.json
-> 
-> │ ├── package.json
-> 
-> │ ├── postcss.config.js
-> 
-> │ ├── README.md
-> 
-> │ ├── tailwind.config.js
-> 
-> │ ├── tsconfig.app.json
-> 
-> │ ├── tsconfig.json
-> 
-> │ ├── tsconfig.node.json
-> 
-> │ └── vite.config.ts
-> 
-> ├── server/
-> 
-> │ ├── middlewares/
-> 
-> │ │ └── auth.middleware.js
-> 
-> │ ├── models/
-> 
-> │ │ ├── Form.js
-> 
-> │ │ └── Response.js
-> 
-> │ ├── routes/
-> 
-> │ │ ├── auth.js
-> 
-> │ │ ├── forms.js
-> 
-> │ │ └── uploads.js
-> 
-> │ ├── utils/
-> 
-> │ │ └── googleAuth.ts
-> 
-> │ ├── index.js
-> 
-> │ ├── package-lock.json
-> 
-> │ └── package.json
-> 
-> └── .gitignore
+##  Contributing
 
-## Contributing
+We welcome contributions from the community and ISTE members.
 
-Contributions are welcome! Feel free to submit a pull request to improve this project.
+### Contribution Workflow
 
+1. Fork the repository
+2. Create a feature branch
+3. Commit using **Conventional Commits**
+4. Push and open a Pull Request
+
+See **CONTRIBUTING.md** for full guidelines.
+
+---
+
+##  Branching Strategy
+
+```text
+main        → stable production
+development → active development
+feature/*   → new features
+fix/*       → bug fixes
+```
+
+---
+
+##  Maintainers
+Maintained under the **ISTE Organization**.
+
+---
+
+##  Contributors
+
+Thanks to all contributors who help build EasyForms ❤️
+
+<a href="https://github.com/ISTE-ORG/EasyForms/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=ISTEBITS/EasyForms" />
+</a>
+
+---
+
+##  Acknowledgements
+
+* ISTE Organization
+* Open Source Community
+* React, Node.js, MongoDB contributors
+
+---
+
+##  License
+
+This project is licensed under the **MIT License**.
+See the [LICENSE](LICENSE) file for details.
+
+---
+
+##  Contact
+
+For queries :
+
+**[MAIL](mailto:dev.team@istebits.com)** |
+**[ISTE Official Website](istebits.com)**
+
+---
+
+##  Support the Project
+
+If you like EasyForms, please **star ⭐ the repository** and share it with the community!
