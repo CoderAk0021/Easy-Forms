@@ -31,7 +31,7 @@ Click the **Fork** button on GitHub.
 ### 2️⃣ Clone Your Fork
 
 ```bash
-git clone https://github.com/ISTEBITS/EasyForms.git
+git clone https://github.com/<your-username>/EasyForms.git
 cd EasyForms
 ```
 
@@ -82,12 +82,14 @@ npm run dev
 ```bash
 cd client
 npm install
-npm run dev
 ```
 ### Create `.env` in `/client`
 ``` bash
 VITE_API_URL=http://localhost:5000
 VITE_CLIENT_ID=<your-google-client-id>
+```
+```
+npm run dev
 ```
 ###  Commit Message Guidelines (Conventional Commits)
 
@@ -163,7 +165,7 @@ If you find a security vulnerability:
 - Do NOT open a public issue.
 - Email us privately at:
 
-- **REPORT HERE** - [security mail](mailto:istebitsbh01@gmail.com)
+- **REPORT HERE** - [security mail](mailto:dev.team@istebits.com)
 
 
 ###  Code of Conduct
