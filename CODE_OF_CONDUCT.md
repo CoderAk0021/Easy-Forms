@@ -43,7 +43,7 @@ This Code of Conduct applies within all project spaces, including:
 - GitHub repositories  
 - Issues and pull requests  
 - Discussions and community forums  
-- Events or meetups related to EasyForms or ISTE  
+- Events or meetups related to EasyForms or ISTE BIT Sindri  
 
 It also applies when an individual is representing the project or organization in public spaces.
 
