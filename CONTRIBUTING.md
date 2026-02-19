@@ -3,7 +3,7 @@
 First off all, thank you for considering contributing to **EasyForms**!  
 We appreciate your time and effort to improve this open-source project.
 
-This project is maintained under the **ISTE Organization** and welcomes contributions from students, developers, and the open-source community.
+This project is maintained under **ISTE BIT Sindri** and welcomes contributions from students, developers, and the open-source community.
 
 ---
 
@@ -180,10 +180,6 @@ All contributors will be recognized automatically in the README via the GitHub c
 
 ###  Need Help?
 
-Open an issue or contact the maintainers:
-
-GitHub Issues
-
-ISTE Dev Team
+Open an issue or contact the maintainers
 
 Thank you for helping make EasyForms better for everyone! 💙
