@@ -129,7 +129,7 @@ export function LandingPage() {
                 to="/test-signup"
                 className="inline-flex h-11 items-center gap-2 rounded-lg bg-zinc-100 px-5 text-sm font-medium text-zinc-950 transition hover:bg-zinc-600"
               >
-                Start Testing as Test User
+                Create Now
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
