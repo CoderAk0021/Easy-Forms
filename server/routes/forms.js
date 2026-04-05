@@ -13,6 +13,7 @@ import {
   handleSubmitAResponse,
   handleCheckStatus,
   handleGetPublicForm,
+  handleGetPublicFormBySlug,
   handleGetMailStatus,
   handleGetTestUserActivities,
 } from "../controllers/form.controllers.js";
@@ -26,6 +27,7 @@ router.get("/mail/status", checkCookies, handleGetMailStatus);
 router.get("/test-users/activities", checkCookies, handleGetTestUserActivities);
 
 // Get a public form published
+router.get("/public/slug/:slug", handleGetPublicFormBySlug);
 router.get("/public/:id", handleGetPublicForm);
 
 //Get a single form (protected)
