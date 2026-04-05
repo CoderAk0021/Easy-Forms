@@ -17,6 +17,8 @@ interface MobileActionBarProps {
   isTestUser: boolean;
   onAddQuestion: (type: QuestionType) => void;
   onUpdateSettings: (updates: Partial<Form["settings"]>) => void;
+  onSlugChange: (value: string) => void;
+  onSlugBlur: () => void;
   onUploadThemeAsset: (
     target: "logoUrl" | "bannerUrl",
     file: File,
@@ -29,6 +31,8 @@ export const MobileActionBar = ({
   isTestUser,
   onAddQuestion,
   onUpdateSettings,
+  onSlugChange,
+  onSlugBlur,
   onUploadThemeAsset,
   isThemeAssetUploading,
 }: MobileActionBarProps) => {
@@ -96,6 +100,8 @@ export const MobileActionBar = ({
               form={form}
               isTestUser={isTestUser}
               onUpdateSettings={onUpdateSettings}
+              onSlugChange={onSlugChange}
+              onSlugBlur={onSlugBlur}
               onUploadThemeAsset={onUploadThemeAsset}
               isThemeAssetUploading={isThemeAssetUploading}
             />

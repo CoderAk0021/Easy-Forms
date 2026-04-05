@@ -146,6 +146,41 @@ const renderMarkdownPreview = (value: string) => {
   return output.join("");
 };
 
+const normalizeSlugInput = (value: string) =>
+  value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+const ensureUniqueSlug = (
+  desiredSlug: string | undefined,
+  allForms: Form[],
+  currentFormId: string,
+) => {
+  const normalized = normalizeSlugInput(desiredSlug || "");
+  if (!normalized) return undefined;
+
+  const usedSlugs = new Set(
+    allForms
+      .filter((item) => (item._id || item.id) !== currentFormId)
+      .map((item) => normalizeSlugInput(item.slug || ""))
+      .filter(Boolean),
+  );
+
+  if (!usedSlugs.has(normalized)) return normalized;
+
+  let suffix = 1;
+  let candidate = `${normalized}-${suffix}`;
+  while (usedSlugs.has(candidate)) {
+    suffix += 1;
+    candidate = `${normalized}-${suffix}`;
+  }
+  return candidate;
+};
+
 export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
   const [form, setForm] = useState<Form>(initialForm);
   const [activeQuestionId, setActiveQuestionId] = useState<string | null>(null);
@@ -161,7 +196,7 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
   const [devicePreview, setDevicePreview] = useState<"desktop" | "mobile">(
     "mobile",
   );
-  const { updateForm } = useForms();
+  const { forms, updateForm } = useForms();
   const { user } = useAuth();
   const isTestUser = user?.role === "test_user";
 
@@ -335,9 +370,14 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
     setIsSaving(true);
     try {
       const formId = form._id || form.id;
+      const uniqueSlug = ensureUniqueSlug(form.slug, forms, formId);
+      if ((form.slug || "") !== (uniqueSlug || "")) {
+        toast.info(`Slug is already used. Updated to "${uniqueSlug}"`);
+      }
       const nextForm = isTestUser
         ? {
             ...form,
+            slug: uniqueSlug,
             settings: {
               ...form.settings,
               emailNotification: {
@@ -352,7 +392,10 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
               },
             },
           }
-        : form;
+        : {
+            ...form,
+            slug: uniqueSlug,
+          };
 
       await updateForm(formId, nextForm);
       toast.success("Form saved successfully");
@@ -362,7 +405,7 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
     } finally {
       setIsSaving(false);
     }
-  }, [form, updateForm, onBack, isSaving, isTestUser]);
+  }, [form, forms, updateForm, onBack, isSaving, isTestUser]);
 
   const shareUrl = `${window.location.origin}/form/${form._id || form.id}`;
 
@@ -680,6 +723,25 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
               isTestUser={isTestUser}
               onAddQuestion={handleAddQuestion}
               onUpdateSettings={handleUpdateSettings}
+              onSlugChange={(value) =>
+                setForm((prev) => ({
+                  ...prev,
+                  slug: normalizeSlugInput(value) || undefined,
+                }))
+              }
+              onSlugBlur={() =>
+                setForm((prev) => {
+                  const formId = prev._id || prev.id;
+                  const uniqueSlug = ensureUniqueSlug(prev.slug, forms, formId);
+                  if ((prev.slug || "") !== (uniqueSlug || "")) {
+                    toast.info(`Slug is already used. Updated to "${uniqueSlug}"`);
+                  }
+                  return {
+                    ...prev,
+                    slug: uniqueSlug,
+                  };
+                })
+              }
               onUploadThemeAsset={handleUploadThemeAsset}
               isThemeAssetUploading={isThemeAssetUploading}
             />
@@ -839,6 +901,27 @@ export function FormEditor({ form: initialForm, onBack }: FormEditorProps) {
                     form={form}
                     isTestUser={isTestUser}
                     onUpdateSettings={handleUpdateSettings}
+                    onSlugChange={(value) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        slug: normalizeSlugInput(value) || undefined,
+                      }))
+                    }
+                    onSlugBlur={() =>
+                      setForm((prev) => {
+                        const formId = prev._id || prev.id;
+                        const uniqueSlug = ensureUniqueSlug(prev.slug, forms, formId);
+                        if ((prev.slug || "") !== (uniqueSlug || "")) {
+                          toast.info(
+                            `Slug is already used. Updated to "${uniqueSlug}"`,
+                          );
+                        }
+                        return {
+                          ...prev,
+                          slug: uniqueSlug,
+                        };
+                      })
+                    }
                     onUploadThemeAsset={handleUploadThemeAsset}
                     isThemeAssetUploading={isThemeAssetUploading}
                   />

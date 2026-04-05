@@ -7,6 +7,7 @@ import {
   Sparkles,
   Mail,
   CalendarClock,
+  Link2,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,6 +20,8 @@ interface SettingsContentProps {
   form: Form;
   isTestUser: boolean;
   onUpdateSettings: (updates: Partial<Form["settings"]>) => void;
+  onSlugChange: (value: string) => void;
+  onSlugBlur: () => void;
   onUploadThemeAsset: (
     target: "logoUrl" | "bannerUrl",
     file: File,
@@ -79,6 +82,8 @@ export const SettingsContent = ({
   form,
   isTestUser,
   onUpdateSettings,
+  onSlugChange,
+  onSlugBlur,
   onUploadThemeAsset,
   isThemeAssetUploading,
 }: SettingsContentProps) => {
@@ -177,6 +182,31 @@ export const SettingsContent = ({
   return (
     <div className="space-y-6">
       <div className="space-y-4">
+        <div className="rounded-xl border border-white/10 bg-zinc-900 p-3">
+          <div className="mb-3 flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-500/20 px-2">
+              <Link2 className="h-4 w-4 text-cyan-300" />
+            </div>
+            <div>
+              <Label className="text-sm font-medium text-white">Public Slug</Label>
+              <p className="text-xs text-zinc-500">
+                Custom URL segment for your published form
+              </p>
+            </div>
+          </div>
+          <Input
+            value={form.slug || ""}
+            onChange={(e) => onSlugChange(e.target.value)}
+            onBlur={onSlugBlur}
+            placeholder="custom-url-slug (optional)"
+            className="h-9 border-white/10 bg-zinc-950 text-zinc-100 font-mono text-sm"
+          />
+          <p className="mt-2 text-xs text-zinc-500">
+            Allowed: letters, numbers, and hyphens. Duplicate slugs are
+            auto-adjusted.
+          </p>
+        </div>
+
         <div className="rounded-xl border border-white/10 bg-zinc-900 p-3">
           <div className="mb-3 flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/20 px-2">
