@@ -39,7 +39,7 @@ const QuestionSchema = new mongoose.Schema({
 });
 
 const FormThemeSchema = new mongoose.Schema({
-  primaryColor: { type: String, default: "#7c3aed" },
+  primaryColor: { type: String, default: "#10b981" },
   backgroundColor: { type: String, default: "#ffffff" },
   fontFamily: { type: String, default: "Inter" },
   logoUrl: { type: String, default: "" },
@@ -91,9 +91,20 @@ const FormSettingsSchema = new mongoose.Schema({
   theme: FormThemeSchema,
 });
 
+function slugifyTitle(value = "") {
+  return String(value)
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 const FormSchema = new mongoose.Schema({
   title: { type: String, required: true, default: "Untitled Form" },
   description: { type: String, default: "" },
+  slug: { type: String, unique: true, sparse: true, lowercase: true, trim: true },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
   questions: [QuestionSchema],
@@ -109,8 +120,26 @@ const FormSchema = new mongoose.Schema({
   },
 });
 
-FormSchema.pre("save", function () {
+FormSchema.pre("save", async function () {
   this.updatedAt = Date.now();
+
+  if (!this.slug) {
+    const baseSlug = slugifyTitle(this.title) || "untitled-form";
+    let nextSlug = baseSlug;
+    let suffix = 1;
+
+    while (
+      await this.constructor.exists({
+        _id: { $ne: this._id },
+        slug: nextSlug,
+      })
+    ) {
+      nextSlug = `${baseSlug}-${suffix}`;
+      suffix += 1;
+    }
+
+    this.slug = nextSlug;
+  }
 });
 
 const Form = mongoose.model("Form", FormSchema);

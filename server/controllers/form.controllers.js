@@ -159,6 +159,25 @@ export async function handleGetPublicForm(req, res) {
   }
 }
 
+function escapeRegex(value = "") {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+export async function handleGetPublicFormBySlug(req, res) {
+  try {
+    const rawSlug = String(req.params.slug || "").trim();
+    const form = await Form.findOne({
+      slug: { $regex: `^${escapeRegex(rawSlug)}$`, $options: "i" },
+    });
+    if (!form) {
+      return res.status(404).json({ message: "Form not found" });
+    }
+    res.json(form);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+}
+
 export async function handleGetSingleForm(req, res) {
   try {
     if (!isValidObjectId(req.params.id)) {
