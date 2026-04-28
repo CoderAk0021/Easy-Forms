@@ -4,32 +4,13 @@ const googleClientId = process.env.GOOGLE_CLIENT_ID || process.env.CLIENT_ID;
 const client = new OAuth2Client(googleClientId);
 
 export async function verifyGoogleIdentity(token) {
-  try {
-    if (!googleClientId) {
-      console.error("Token Verification Failed: Google client ID is not configured");
-      return null;
-    }
-
-    const ticket = await client.verifyIdToken({
-      idToken: token,
-      audience: googleClientId,
-    });
-    const payload = ticket.getPayload();
-    if (!payload?.email || !payload?.sub) {
-      return null;
-    }
-
-    return {
-      sub: String(payload.sub),
-      email: String(payload.email).trim().toLowerCase(),
-      name: typeof payload.name === "string" ? payload.name : "",
-      picture:
-        typeof payload.picture === "string" ? String(payload.picture) : "",
-    };
-  } catch (error) {
-    console.error("Token Verification Failed:", error.message);
-    return null;
-  }
+  const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  if (!data.email) return null;
+  return { email: data.email, name: data.name };
 }
 
 export async function verifyGoogleToken(token) {
